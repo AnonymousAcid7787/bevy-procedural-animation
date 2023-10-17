@@ -1,11 +1,11 @@
 use bevy::{
-    prelude::{*, shape::Cube}, 
+    prelude::{*}, 
     render::{
         render_resource::{AsBindGroup, RenderPipelineDescriptor, SpecializedMeshPipelineError}, 
     mesh::MeshVertexBufferLayout
     }, 
     reflect::{TypePath, TypeUuid}, 
-    pbr::{MaterialPipeline, MaterialPipelineKey}, math::vec2
+    pbr::{MaterialPipeline, MaterialPipelineKey}, math::{vec2, vec4}
 };
 use bevy_flycam::{NoCameraPlayerPlugin, FlyCam};
 use utils::LogFramesPlugin;
@@ -20,6 +20,7 @@ fn main() {
             DefaultPlugins,
             LogFramesPlugin::default(),
             MaterialPlugin::<CustomMaterial>::default(),
+            NoCameraPlayerPlugin,
         ))
         .add_systems(Startup, setup);
 
@@ -30,29 +31,29 @@ fn setup(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<CustomMaterial>>,
+    mut color_materials: ResMut<Assets<StandardMaterial>>,
 ) {
     // cube
     commands.spawn(MaterialMeshBundle {
-        mesh: meshes.add(Mesh::from(shape::Cube { size: 1.0 })),
-        transform: Transform::from_xyz(0.0, 0.5, 0.0),
+        mesh: meshes.add(shape::Cube::new(1.).into()).into(),
         material: materials.add(CustomMaterial {
-            resolution: vec2(500., 500.),
-            thickness: 0.3,
-            alpha_mode: AlphaMode::Blend,
+            color: vec4(1., 0., 0., 1.),
         }),
+        transform: Transform::from_xyz(0.0, 2., 0.0),
         ..default()
     });
 
     commands.spawn(PbrBundle {
-        mesh: Mesh::from(Cube::new(1)),
-        material: 
+        mesh: meshes.add(shape::Cube::new(1.).into()).into(),
+        material: color_materials.add(Color::rgb(0.3, 0.5, 0.3).into()),
+        transform: Transform::from_xyz(0., 0., 0.),
+        ..default()
     });
 
     // camera
     commands.spawn((
         Camera3dBundle {
-            // transform: Transform::from_xyz(-2.0, 2.5, 5.0).looking_at(Vec3::ZERO, Vec3::Y),
-            transform: Transform::from_xyz(0., 0., -1.).looking_at(Vec3::ZERO, Vec3::Y),
+            transform: Transform::from_xyz(0., 0., -2.).looking_at(Vec3::ZERO, Vec3::Y),
             ..default()
         },
         FlyCam
@@ -63,10 +64,6 @@ fn setup(
 impl Material for CustomMaterial {
     fn fragment_shader() -> bevy::render::render_resource::ShaderRef {
         "shaders/custom_material.frag".into()
-    }
-
-    fn alpha_mode(&self) -> AlphaMode {
-        self.alpha_mode
     }
 
     // Bevy assumes by default that vertex shaders use the "vertex" entry point
@@ -88,8 +85,5 @@ impl Material for CustomMaterial {
 #[uuid = "1f73101b-0d10-4c34-8aa9-f0e2b3b77ec2"]
 pub struct CustomMaterial {
     #[uniform(0)]
-    resolution: Vec2,
-    #[uniform(1)]
-    thickness: f32,
-    alpha_mode: AlphaMode
+    color: Vec4,
 }
