@@ -1,4 +1,4 @@
-use bevy::{prelude::{Resource, Res, ResMut, FrameCountPlugin, Update}, time::TimePlugin, log::LogPlugin, diagnostic::{LogDiagnosticsPlugin, FrameTimeDiagnosticsPlugin}, app::PluginGroupBuilder};
+use bevy::{prelude::{Resource, Res, ResMut, FrameCountPlugin, Update}, time::TimePlugin, log::LogPlugin, diagnostic::{LogDiagnosticsPlugin, FrameTimeDiagnosticsPlugin}};
 
 /// A plugin that logs fps 
 #[derive(Default)]
