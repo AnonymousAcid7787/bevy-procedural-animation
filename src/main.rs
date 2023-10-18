@@ -5,7 +5,7 @@ use std::f32::consts::PI;
 
 use bevy::{
     prelude::*,
-    render::{render_resource::{Extent3d, TextureDimension, TextureFormat}, RenderPlugin, settings::WgpuSettings},
+    render::{render_resource::{Extent3d, TextureDimension, TextureFormat}, RenderPlugin, settings::{WgpuSettings, Backends}},
 };
 
 fn main() {
@@ -16,6 +16,7 @@ fn main() {
         RenderPlugin {
             wgpu_settings: WgpuSettings {
                 power_preference: bevy::render::settings::PowerPreference::LowPower,
+                backends: Some(Backends::DX12),
                 ..Default::default()
             }
         }
