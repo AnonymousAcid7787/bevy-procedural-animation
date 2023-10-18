@@ -5,12 +5,24 @@ use std::f32::consts::PI;
 
 use bevy::{
     prelude::*,
-    render::render_resource::{Extent3d, TextureDimension, TextureFormat},
+    render::{render_resource::{Extent3d, TextureDimension, TextureFormat}, RenderPlugin, settings::WgpuSettings},
 };
 
 fn main() {
+
+    let default_plugins = DefaultPlugins.set(
+        ImagePlugin::default_nearest()
+    ).set(
+        RenderPlugin {
+            wgpu_settings: WgpuSettings {
+                power_preference: bevy::render::settings::PowerPreference::LowPower,
+                ..Default::default()
+            }
+        }
+    );
+
     App::new()
-        .add_plugins(DefaultPlugins.set(ImagePlugin::default_nearest()))
+        .add_plugins(default_plugins)
         .add_systems(Startup, setup)
         .add_systems(Update, rotate)
         .run();
