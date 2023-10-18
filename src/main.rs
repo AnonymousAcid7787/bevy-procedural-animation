@@ -14,6 +14,7 @@ fn main() {
             NoCameraPlayerPlugin
         ))
         .add_systems(Startup, setup)
+        .add_systems(Update, billboarding)
         .run();
 }
 
@@ -22,13 +23,19 @@ fn setup(
     mut materials: ResMut<Assets<TestMaterial>>,
     mut meshes: ResMut<Assets<Mesh>>
 ) {
-    //cube with test material
-    commands.spawn(MaterialMeshBundle {
-        material: materials.add(TestMaterial { color: Color::PURPLE }),
-        mesh: meshes.add(Mesh::from(shape::Cube::new(1.))),
-        transform: Transform::from_xyz(0., 0., 0.),
-        ..Default::default()
-    });
+    //quad with test material
+    commands.spawn((
+        MaterialMeshBundle {
+            material: materials.add(TestMaterial { color: Color::PURPLE }),
+            mesh: meshes.add(
+                // shape::Quad::new(Vec2::new(1., 1.)).into()
+                shape::Cube::new(1.).into()
+            ),
+            transform: Transform::from_xyz(0., 0., 0.),
+            ..Default::default()
+        },
+        Billboard
+    ));
 
     //flycam
     commands.spawn((
@@ -39,6 +46,19 @@ fn setup(
         FlyCam
     ));
 }
+
+fn billboarding(
+    mut billboard_entities: Query<&mut Transform, With<Billboard>>,
+    camera_query: Query<&Transform, (With<Camera>, Without<Billboard>)>
+) {
+    let cam_pos = camera_query.get_single().unwrap().translation;
+    for mut billboard_transform in billboard_entities.iter_mut() {
+        billboard_transform.look_at(cam_pos, Vec3::Y);
+    }
+}
+
+#[derive(Component)]
+pub struct Billboard;
 
 impl Material for TestMaterial {
     fn fragment_shader() -> bevy::render::render_resource::ShaderRef {
