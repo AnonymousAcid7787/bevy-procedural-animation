@@ -1,4 +1,4 @@
-use bevy::{prelude::*, DefaultPlugins, render::render_resource::AsBindGroup, reflect::{TypeUuid, TypePath}};
+use bevy::{prelude::*, DefaultPlugins, render::{render_resource::AsBindGroup, RenderPlugin, settings::{WgpuSettings, Backends}}, reflect::{TypeUuid, TypePath}};
 use bevy_flycam::{NoCameraPlayerPlugin, FlyCam};
 use utils::LogFramesPlugin;
 
@@ -8,7 +8,15 @@ mod utils;
 fn main() {
     App::new()
         .add_plugins((
-            DefaultPlugins,
+            DefaultPlugins.set(
+                RenderPlugin {
+                    wgpu_settings: WgpuSettings {
+                        power_preference: bevy::render::settings::PowerPreference::LowPower,
+                        backends: Some(Backends::DX12),
+                        ..Default::default()
+                    }
+                }
+            ),
             LogFramesPlugin::default(),
             MaterialPlugin::<TestMaterial>::default(),
             NoCameraPlayerPlugin
@@ -21,12 +29,17 @@ fn main() {
 fn setup(
     mut commands: Commands,
     mut materials: ResMut<Assets<TestMaterial>>,
-    mut meshes: ResMut<Assets<Mesh>>
+    mut meshes: ResMut<Assets<Mesh>>,
+    asset_server: Res<AssetServer>
 ) {
     //quad with test material
     commands.spawn((
         MaterialMeshBundle {
-            material: materials.add(TestMaterial { color: Color::PURPLE }),
+            material: materials.add(TestMaterial {
+                 color: Color::PURPLE,
+                 color_texture: Some(asset_server.load("images/icon.png")), 
+                 alpha_mode: AlphaMode::Blend
+            }),
             mesh: meshes.add(
                 // shape::Quad::new(Vec2::new(1., 1.)).into()
                 shape::Cube::new(1.).into()
@@ -66,13 +79,18 @@ impl Material for TestMaterial {
     }
 
     fn alpha_mode(&self) -> AlphaMode {
-        AlphaMode::Blend
+        self.alpha_mode
     }
 }
 
-#[derive(AsBindGroup, TypeUuid, TypePath, Debug, Clone)]
-#[uuid = "e87f94fd-bffe-4e57-9501-262295cf7bdf"]
+// This is the struct that will be passed to your shader
+#[derive(TypePath, AsBindGroup, Debug, Clone, TypeUuid)]
+#[uuid = "893a605b-ebb3-4dc1-8eb0-0b788a4bc91d"]
 pub struct TestMaterial {
     #[uniform(0)]
-    color: Color
+    color: Color,
+    #[texture(1)]
+    #[sampler(2)]
+    color_texture: Option<Handle<Image>>,
+    alpha_mode: AlphaMode,
 }
