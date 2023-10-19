@@ -1,4 +1,4 @@
-#import bevy_pbr::mesh_vertex_output MeshVertexOutput
+#import bevy_pbr::mesh_vertex_output
 
 struct CustomMaterial {
     color: vec4<f32>,

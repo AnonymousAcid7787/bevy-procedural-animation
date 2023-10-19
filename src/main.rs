@@ -1,4 +1,4 @@
-use bevy::{prelude::*, DefaultPlugins, render::{render_resource::AsBindGroup, RenderPlugin, settings::{WgpuSettings, Backends}}, reflect::{TypeUuid, TypePath}};
+use bevy::{prelude::*, DefaultPlugins, render::{render_resource::{AsBindGroup, PolygonMode}, RenderPlugin, settings::WgpuSettings}, reflect::{TypeUuid, TypePath}, pbr::wireframe::{Wireframe, WireframePlugin}};
 use bevy_flycam::{NoCameraPlayerPlugin, FlyCam};
 use utils::LogFramesPlugin;
 
@@ -12,11 +12,12 @@ fn main() {
                 RenderPlugin {
                     wgpu_settings: WgpuSettings {
                         power_preference: bevy::render::settings::PowerPreference::LowPower,
-                        backends: Some(Backends::DX12),
+                        // backends: Some(Backends::DX12),
                         ..Default::default()
                     }
                 }
-            ),
+            )
+            .add(WireframePlugin::default()),
             LogFramesPlugin::default(),
             MaterialPlugin::<TestMaterial>::default(),
             NoCameraPlayerPlugin
@@ -30,24 +31,35 @@ fn setup(
     mut commands: Commands,
     mut materials: ResMut<Assets<TestMaterial>>,
     mut meshes: ResMut<Assets<Mesh>>,
+    mut standard_materials: ResMut<Assets<StandardMaterial>>,
     asset_server: Res<AssetServer>
 ) {
+    let material = materials.add(TestMaterial {
+        color: Color::PURPLE,
+        color_texture: Some(asset_server.load("images/icon.png")), 
+        alpha_mode: AlphaMode::Blend
+   });
+   let cube_mesh = meshes.add(shape::Cube::new(1.).into());
+
     //quad with test material
     commands.spawn((
         MaterialMeshBundle {
-            material: materials.add(TestMaterial {
-                 color: Color::PURPLE,
-                 color_texture: Some(asset_server.load("images/icon.png")), 
-                 alpha_mode: AlphaMode::Blend
-            }),
-            mesh: meshes.add(
-                // shape::Quad::new(Vec2::new(1., 1.)).into()
-                shape::Cube::new(1.).into()
-            ),
+            material,
+            mesh: cube_mesh.clone(),
             transform: Transform::from_xyz(0., 0., 0.),
             ..Default::default()
         },
-        Billboard
+        Billboard,
+        Wireframe,
+    ));
+
+    commands.spawn((
+        PbrBundle {
+            material: standard_materials.add(Color::PURPLE.into()),
+            mesh: cube_mesh,
+            transform: Transform::from_xyz(0., 5., 0.),
+            ..Default::default()
+        },
     ));
 
     //flycam
@@ -80,6 +92,16 @@ impl Material for TestMaterial {
 
     fn alpha_mode(&self) -> AlphaMode {
         self.alpha_mode
+    }
+
+    fn specialize(
+            _: &bevy::pbr::MaterialPipeline<Self>,
+            descriptor: &mut bevy::render::render_resource::RenderPipelineDescriptor,
+            _: &bevy::render::mesh::MeshVertexBufferLayout,
+            _: bevy::pbr::MaterialPipelineKey<Self>,
+        ) -> Result<(), bevy::render::render_resource::SpecializedMeshPipelineError> {
+        descriptor.primitive.polygon_mode = PolygonMode::Line;
+        return Ok(());
     }
 }
 
