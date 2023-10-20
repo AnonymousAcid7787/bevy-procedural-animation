@@ -37,8 +37,6 @@ fn draw_line(
 fn fragment(
     mesh: MeshVertexOutput
 ) -> @location(0) vec4<f32> {
-    let line_alpha = 1.;
-
     // return vec4<f32>(lines*line_alpha, 0., 0., 1.);
     return vec4<f32>(0., 0., 0., 0.);
 }
