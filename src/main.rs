@@ -72,37 +72,25 @@ fn setup(
         alpha_mode: AlphaMode::Blend
     });
 
-    let spine = shape::Capsule {
+    let torso = shape::Capsule {
         radius: 0.03,
-        depth: 0.54,
+        depth: 0.60,
         ..Default::default()
     };
 
     let arm = shape::Capsule {
         radius: 0.03,
-        depth: 0.48,
+        depth: 0.60,
         ..Default::default()
     };
 
     let leg = shape::Capsule {
         radius: 0.03,
-        depth: 0.6,
+        depth: 0.75,
         ..Default::default()
     };
 
     spawn_mesh!(arm, 0., 0., 0., commands, standard_materials, meshes);
-
-    unsafe {
-        commands.spawn((
-            PbrBundle {
-                material: standard_materials.add(Color::PURPLE.into()),
-                mesh: meshes.add(spine.clone().into()),
-                transform: Transform::from_xyz(0., 0., 0.),
-                ..Default::default()
-            },
-            std::mem::transmute::<shape::Capsule, TestComponent>(spine)
-        ));
-    }
 
     //flycam
     commands.spawn((
