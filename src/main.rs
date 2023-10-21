@@ -8,7 +8,7 @@ use bevy::{
         RenderPlugin, 
         settings::{WgpuSettings, Backends}
     }, 
-    pbr::wireframe::WireframePlugin, reflect::{TypePath, TypeUuid}
+    pbr::wireframe::{WireframePlugin, Wireframe}, reflect::{TypePath, TypeUuid}
 };
 use bevy_flycam::{NoCameraPlayerPlugin, FlyCam};
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
@@ -23,7 +23,7 @@ fn main() {
             DefaultPlugins.set(
                 RenderPlugin {
                     wgpu_settings: WgpuSettings {
-                        backends: Some(Backends::DX12),
+                        // backends: Some(Backends::DX12),
                         ..Default::default()
                     }
                 }
@@ -44,7 +44,7 @@ fn main() {
 }
 
 macro_rules! spawn_mesh {
-    ($mesh:expr, $shape:expr, $x:expr, $y:expr, $z:expr, $commands:expr, $material:expr, $transform:expr) => {
+    ($mesh:expr, $shape:expr, $commands:expr, $material:expr, $transform:expr) => {
         unsafe {
             $commands.spawn((
                 PbrBundle {
@@ -53,7 +53,8 @@ macro_rules! spawn_mesh {
                     transform: $transform,
                     ..Default::default()
                 },
-                std::mem::transmute::<shape::Capsule, TestComponent>($shape)
+                std::mem::transmute::<shape::Capsule, TestComponent>($shape),
+                // Wireframe,
             ))
         }
     };
@@ -66,53 +67,67 @@ fn setup(
 ) {
     let material = standard_materials.add(Color::PURPLE.into());
 
-    let radius = 0.03_f32;
-    let torso_depth = 0.6_f32;
+    let scale = 100.;
+
+    let radius = 0.03_f32 * scale;
+    let torso_depth = 0.6_f32 * scale;
     let torso_len = torso_depth + radius*2.;
     let arm_depth = torso_depth;
     let arm_len = arm_depth + radius*2.;
-    let leg_depth = 0.75;
+    let leg_depth = 0.75 * scale;
     let leg_len = leg_depth + radius*2.;
+    let latitudes = 8;
+    let longitudes = 16;
+
 
     //shapes
     let torso = shape::Capsule {
-        radius: 0.03,
-        depth: 0.60,
+        radius,
+        depth: torso_depth,
+        latitudes,
+        longitudes,
         ..Default::default()
     };
 
     let arm = shape::Capsule {
-        radius: 0.03,
-        depth: 0.60,
+        radius,
+        depth: arm_depth,
+        latitudes,
+        longitudes,
         ..Default::default()
     };
 
     let leg = shape::Capsule {
-        radius: 0.03,
-        depth: 0.75,
+        radius,
+        depth: leg_depth,
+        latitudes,
+        longitudes,
         ..Default::default()
     };
 
     //transforms
     let mut arm1_transform = Transform::from_xyz(0., 0., 0.);
         arm1_transform.rotate_around(
-            Vec3::new(0., 0.3, 0.), 
+            Vec3::new(0., arm_depth/2., 0.), 
             Quat::from_axis_angle(Vec3::Z, 45_f32.to_radians())
         );
+    
     let mut arm2_transform = Transform::from_xyz(0., 0., 0.);
         arm2_transform.rotate_around(
-            Vec3::new(0., 0.3, 0.), 
+            Vec3::new(0., arm_depth/2., 0.), 
             Quat::from_axis_angle(Vec3::Z, -45_f32.to_radians())
         );
+
     let torso_transform = Transform::from_xyz(0., 0., 0.);
-    let mut leg1_transform = Transform::from_xyz(0., -torso_len, 0.);
+
+    let mut leg1_transform = Transform::from_xyz(0., radius - torso_len - (leg_len - torso_len)/2., 0.);
         leg1_transform.rotate_around(
-            Vec3::new(0., -torso_len + leg_len/2., 0.), 
+            Vec3::new(0., -torso_len/2., 0.), 
             Quat::from_axis_angle(Vec3::Z, 30_f32.to_radians())
         );
-    let mut leg2_transform = Transform::from_xyz(0., -torso_len, 0.);
+    let mut leg2_transform = Transform::from_xyz(0., radius - torso_len - (leg_len - torso_len)/2., 0.);
         leg2_transform.rotate_around(
-            Vec3::new(0., -torso_len + leg_len/2., 0.), 
+            Vec3::new(0., -torso_len/2., 0.), 
             Quat::from_axis_angle(Vec3::Z, -30_f32.to_radians())
         );
 
@@ -120,16 +135,14 @@ fn setup(
     //spawning entities
     let mut arm1_entity = spawn_mesh!(
         meshes.add(arm.into()), 
-        arm, 
-        -1., 0., 0., 
+        arm,
         commands, 
         material.clone(),
         arm1_transform
     );
     let mut arm2_entity = spawn_mesh!(
         meshes.add(arm.into()), 
-        arm, 
-        1., 0., 0., 
+        arm,
         commands, 
         material.clone(),
         arm2_transform
@@ -137,8 +150,7 @@ fn setup(
  
     let mut torso_entity =spawn_mesh!(
         meshes.add(torso.into()), 
-        torso, 
-        0., 0., 0., 
+        torso,
         commands, 
         material.clone(),
         torso_transform
@@ -146,16 +158,14 @@ fn setup(
  
     let mut leg1_entity = spawn_mesh!(
         meshes.add(leg.into()), 
-        leg, 
-        -1., -0.6, 0., 
+        leg,
         commands, 
         material.clone(),
         leg1_transform
     );
     let mut leg2_entity = spawn_mesh!(
         meshes.add(leg.into()), 
-        leg, 
-        1., -0.6, 0., 
+        leg,
         commands, 
         material.clone(),
         leg2_transform
