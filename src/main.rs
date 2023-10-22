@@ -12,8 +12,7 @@ use bevy::{
 };
 use bevy_flycam::{NoCameraPlayerPlugin, FlyCam};
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
-use bevy_rapier3d::{prelude::{RapierPhysicsPlugin, NoUserData}, render::RapierDebugRenderPlugin};
-use utils::LogFramesPlugin;
+use bevy_rapier3d::{prelude::{RapierPhysicsPlugin, NoUserData, Collider, RigidBody}, render::RapierDebugRenderPlugin};
 
 
 mod utils;
@@ -38,7 +37,10 @@ fn main() {
             RapierPhysicsPlugin::<NoUserData>::default(),
             RapierDebugRenderPlugin::default(),
         ))
-        .add_systems(Startup, setup)
+        .add_systems(Startup, ( 
+            stickman_mesh_setup,
+            scene_setup
+        ))
         .add_systems(Update, test_update)
         .register_type::<TestComponent>();
 
@@ -47,9 +49,23 @@ fn main() {
 
 }
 
-macro_rules! spawn_mesh {
-    ($mesh:expr, $shape:expr, $commands:expr, $material:expr, $transform:expr) => {
-        unsafe {
+fn scene_setup(
+    mut commands: Commands
+) {
+    //flycam
+    commands.spawn((
+        Camera3dBundle {
+            transform: Transform::from_xyz(0., 0., 2.).looking_at(Vec3::ZERO, Vec3::Y),
+            ..Default::default()
+        },
+        FlyCam
+    ));
+}
+
+
+macro_rules! spawn_body_part {
+    ($mesh:expr, $commands:expr, $material:expr, $transform:expr, $capsule_depth:expr, $radius:expr) => {
+        {
             $commands.spawn((
                 PbrBundle {
                     mesh: $mesh, 
@@ -57,8 +73,12 @@ macro_rules! spawn_mesh {
                     transform: $transform,
                     ..Default::default()
                 },
-                std::mem::transmute::<shape::Capsule, TestComponent>($shape),
-                // Wireframe,
+                RigidBody::Fixed,
+                Collider::capsule(
+                    Vec3::Y * $capsule_depth/2.,
+                    Vec3::Y * -$capsule_depth/2.,
+                    $radius
+                )
             )).id()
         }
     };
@@ -73,14 +93,14 @@ macro_rules! add_child {
     };
 }
 
-fn setup(
+fn stickman_mesh_setup(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut standard_materials: ResMut<Assets<StandardMaterial>>,
 ) {
     let material = standard_materials.add(Color::PURPLE.into());
 
-    let scale = 50.; 
+    let scale = 1.;
 
     let radius = 0.03_f32 * scale;
     let torso_depth = 0.6_f32 * scale;
@@ -91,7 +111,6 @@ fn setup(
     let leg_len = leg_depth + radius*2.;
     let latitudes = 8;
     let longitudes = 16;
-
 
     //shapes
     let torso = shape::Capsule {
@@ -143,68 +162,70 @@ fn setup(
             Vec3::new(0., -torso_len/2., 0.), 
             Quat::from_axis_angle(Vec3::Z, -30_f32.to_radians())
         );
-
     
     //spawning entities
-    let body_entity = commands.spawn((
-        Transform::IDENTITY,
-        Visibility::default(),
-        ComputedVisibility::default(),
-        GlobalTransform::default(),
-        StickmanBody
-    )).id();
-    let arm1_entity = spawn_mesh!(
-        meshes.add(arm.into()), 
-        arm,
+    let body_mesh_entity = commands.spawn(StickmanMeshParentBundle::default()).id();
+    let arm1_entity = spawn_body_part!(
+        meshes.add(arm.into()),
         commands, 
         material.clone(),
-        arm1_transform
+        arm1_transform,
+        arm_depth,
+        radius
     );
-    let arm2_entity = spawn_mesh!(
-        meshes.add(arm.into()), 
-        arm,
+    let arm2_entity = spawn_body_part!(
+        meshes.add(arm.into()),
         commands, 
         material.clone(),
-        arm2_transform
+        arm2_transform,
+        arm_depth,
+        radius
     );
  
-    let torso_entity = spawn_mesh!(
+    let torso_entity = spawn_body_part!(
         meshes.add(torso.into()), 
-        torso,
         commands, 
         material.clone(),
-        torso_transform
+        torso_transform,
+        torso_depth,
+        radius
     );
  
-    let leg1_entity = spawn_mesh!(
+    let leg1_entity = spawn_body_part!(
         meshes.add(leg.into()), 
-        leg,
         commands, 
         material.clone(),
-        leg1_transform
+        leg1_transform,
+        leg_depth,
+        radius
     );
-    let leg2_entity = spawn_mesh!(
+    let leg2_entity = spawn_body_part!(
         meshes.add(leg.into()), 
-        leg,
         commands, 
         material.clone(),
-        leg2_transform
+        leg2_transform,
+        leg_depth,
+        radius
     );
 
-    add_child!(commands, body_entity, torso_entity);
-    add_child!(commands, body_entity, arm1_entity);
-    add_child!(commands, body_entity, arm2_entity);
-    add_child!(commands, body_entity, leg1_entity);
-    add_child!(commands, body_entity, leg2_entity);
+    //parent heirarchy stuff
+    add_child!(commands, body_mesh_entity, torso_entity);
+    add_child!(commands, body_mesh_entity, arm1_entity);
+    add_child!(commands, body_mesh_entity, arm2_entity);
+    add_child!(commands, body_mesh_entity, leg1_entity);
+    add_child!(commands, body_mesh_entity, leg2_entity);
 
-    //flycam
-    commands.spawn((
-        Camera3dBundle {
-            transform: Transform::from_xyz(0., 0., 2.).looking_at(Vec3::ZERO, Vec3::Y),
-            ..Default::default()
-        },
-        FlyCam
-    ));
+    //colliders
+    // let _ = commands.spawn((//remove the "let _ ="
+    //     PbrBundle {
+    //         mesh: meshes.add(arm.into()), 
+    //         material: material.clone(),
+    //         transform: arm1_transform.clone(),//remove this .clone() after done
+    //         ..Default::default()
+    //     },
+    //     RigidBody::Dynamic,
+    //     Collider::capsule(arm1_transform.local_y()+arm_len/2., arm1_transform.local_y()-arm_len/2., radius)
+    // )).id();
 }
 
 fn test_update(
@@ -220,8 +241,12 @@ fn test_update(
     }
 }
 
-#[derive(Component)]
-pub struct StickmanBody;
+#[derive(Default, Bundle)]
+pub struct StickmanMeshParentBundle {
+    pub visiblity: Visibility,
+    pub computed_visibility: ComputedVisibility,
+    pub transform_bundle: TransformBundle,
+}
 
 #[derive(Component, Reflect)]
 pub struct TestComponent {
@@ -237,6 +262,18 @@ pub struct TestComponent {
     pub longitudes: usize,
     
     uv_profile: i8,
+}
+
+// This is the struct that will be passed to your shader
+#[derive(TypePath, AsBindGroup, Debug, Clone, TypeUuid)]
+#[uuid = "893a605b-ebb3-4dc1-8eb0-0b788a4bc91d"]
+pub struct TestMaterial {
+    #[uniform(0)]
+    color: Color,
+    #[texture(1)]
+    #[sampler(2)]
+    color_texture: Option<Handle<Image>>,
+    alpha_mode: AlphaMode,
 }
 
 impl Material for TestMaterial {
@@ -257,16 +294,4 @@ impl Material for TestMaterial {
         descriptor.primitive.polygon_mode = PolygonMode::Line;
         return Ok(());
     }
-}
-
-// This is the struct that will be passed to your shader
-#[derive(TypePath, AsBindGroup, Debug, Clone, TypeUuid)]
-#[uuid = "893a605b-ebb3-4dc1-8eb0-0b788a4bc91d"]
-pub struct TestMaterial {
-    #[uniform(0)]
-    color: Color,
-    #[texture(1)]
-    #[sampler(2)]
-    color_texture: Option<Handle<Image>>,
-    alpha_mode: AlphaMode,
 }
