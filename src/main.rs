@@ -6,9 +6,9 @@ use bevy::{
     render::{
         render_resource::{PolygonMode, AsBindGroup}, 
         RenderPlugin, 
-        settings::{WgpuSettings, Backends}
+        settings::WgpuSettings
     }, 
-    pbr::wireframe::{WireframePlugin, Wireframe}, reflect::{TypePath, TypeUuid}
+    pbr::wireframe::WireframePlugin, reflect::{TypePath, TypeUuid}
 };
 use bevy_flycam::{NoCameraPlayerPlugin, FlyCam};
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
@@ -55,8 +55,17 @@ macro_rules! spawn_mesh {
                 },
                 std::mem::transmute::<shape::Capsule, TestComponent>($shape),
                 // Wireframe,
-            ))
+            )).id()
         }
+    };
+}
+
+macro_rules! add_child {
+    ($commands:expr, $parent:expr, $child:expr) => {
+        $commands.add(AddChild {
+            parent: $parent,
+            child: $child,
+        });
     };
 }
 
@@ -133,14 +142,15 @@ fn setup(
 
     
     //spawning entities
-    let mut arm1_entity = spawn_mesh!(
+    // let body = commands.spawn()
+    let arm1_entity = spawn_mesh!(
         meshes.add(arm.into()), 
         arm,
         commands, 
         material.clone(),
         arm1_transform
     );
-    let mut arm2_entity = spawn_mesh!(
+    let arm2_entity = spawn_mesh!(
         meshes.add(arm.into()), 
         arm,
         commands, 
@@ -148,7 +158,7 @@ fn setup(
         arm2_transform
     );
  
-    let mut torso_entity =spawn_mesh!(
+    let torso_entity = spawn_mesh!(
         meshes.add(torso.into()), 
         torso,
         commands, 
@@ -156,14 +166,14 @@ fn setup(
         torso_transform
     );
  
-    let mut leg1_entity = spawn_mesh!(
+    let leg1_entity = spawn_mesh!(
         meshes.add(leg.into()), 
         leg,
         commands, 
         material.clone(),
         leg1_transform
     );
-    let mut leg2_entity = spawn_mesh!(
+    let leg2_entity = spawn_mesh!(
         meshes.add(leg.into()), 
         leg,
         commands, 
@@ -171,10 +181,10 @@ fn setup(
         leg2_transform
     );
 
-    //legs
-    //  leg2 rotate 45deg z axis
-    //  leg1 rot -45deg z axis
-
+    add_child!(commands, torso_entity, arm1_entity);
+    add_child!(commands, torso_entity, arm2_entity);
+    add_child!(commands, torso_entity, leg1_entity);
+    add_child!(commands, torso_entity, leg2_entity);
 
     //flycam
     commands.spawn((
