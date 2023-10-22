@@ -8,14 +8,16 @@ use bevy::{
         RenderPlugin, 
         settings::WgpuSettings
     }, 
-    pbr::wireframe::WireframePlugin, reflect::{TypePath, TypeUuid}
+    pbr::wireframe::WireframePlugin, reflect::{TypePath, TypeUuid}, ecs::component
 };
 use bevy_flycam::{NoCameraPlayerPlugin, FlyCam};
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_rapier3d::{prelude::{RapierPhysicsPlugin, NoUserData, Collider, RigidBody}, render::RapierDebugRenderPlugin};
+use stickman_transform::scale_limb;
 
 
 mod utils;
+mod stickman_transform;
 
 fn main() {
     let mut app = App::new();
@@ -38,7 +40,7 @@ fn main() {
             RapierDebugRenderPlugin::default(),
         ))
         .add_systems(Startup, ( 
-            stickman_mesh_setup,
+            stickman_body_setup,
             scene_setup
         ))
         .add_systems(Update, test_update)
@@ -78,7 +80,8 @@ macro_rules! spawn_body_part {
                     Vec3::Y * $capsule_depth/2.,
                     Vec3::Y * -$capsule_depth/2.,
                     $radius
-                )
+                ),
+                StickmanBodyPart::new($radius,$capsule_depth),
             )).id()
         }
     };
@@ -93,7 +96,7 @@ macro_rules! add_child {
     };
 }
 
-fn stickman_mesh_setup(
+fn stickman_body_setup(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut standard_materials: ResMut<Assets<StandardMaterial>>,
@@ -140,31 +143,34 @@ fn stickman_mesh_setup(
     //transforms
     let mut arm1_transform = Transform::from_xyz(0., 0., 0.);
         arm1_transform.rotate_around(
-            Vec3::new(0., arm_depth/2., 0.), 
+            Vec3::new(0., arm_len/2., 0.), 
             Quat::from_axis_angle(Vec3::Z, 45_f32.to_radians())
         );
     
     let mut arm2_transform = Transform::from_xyz(0., 0., 0.);
         arm2_transform.rotate_around(
-            Vec3::new(0., arm_depth/2., 0.), 
+            Vec3::new(0., arm_len/2., 0.), 
             Quat::from_axis_angle(Vec3::Z, -45_f32.to_radians())
         );
 
     let torso_transform = Transform::from_xyz(0., 0., 0.);
 
-    let mut leg1_transform = Transform::from_xyz(0., radius - torso_len - (leg_len - torso_len)/2., 0.);
+    let mut leg1_transform = Transform::from_xyz(0., -torso_len - (leg_len - torso_len)/2., 0.);
         leg1_transform.rotate_around(
             Vec3::new(0., -torso_len/2., 0.), 
             Quat::from_axis_angle(Vec3::Z, 30_f32.to_radians())
         );
-    let mut leg2_transform = Transform::from_xyz(0., radius - torso_len - (leg_len - torso_len)/2., 0.);
+    let mut leg2_transform = Transform::from_xyz(0., -torso_len - (leg_len - torso_len)/2., 0.);
         leg2_transform.rotate_around(
             Vec3::new(0., -torso_len/2., 0.), 
             Quat::from_axis_angle(Vec3::Z, -30_f32.to_radians())
         );
     
     //spawning entities
-    let body_mesh_entity = commands.spawn(StickmanMeshParentBundle::default()).id();
+    let body_mesh_entity = commands.spawn((
+        StickmanMeshParentBundle::default(),
+        StickmanBody
+    )).id();
     let arm1_entity = spawn_body_part!(
         meshes.add(arm.into()),
         commands, 
@@ -173,6 +179,7 @@ fn stickman_mesh_setup(
         arm_depth,
         radius
     );
+
     let arm2_entity = spawn_body_part!(
         meshes.add(arm.into()),
         commands, 
@@ -229,9 +236,56 @@ fn stickman_mesh_setup(
 }
 
 fn test_update(
-    
+    mut stickman_bodies: Query<(&mut Transform, &Children), With<StickmanBody>>,
+    stickman_parts: Query<(&mut Transform, &StickmanBodyPart) , Without<StickmanBody>>,
+    keys: Res<Input<KeyCode>>,
 ) {
-    
+    for (mut transform, children) in stickman_bodies.iter_mut() {
+        let i = 
+            if keys.just_pressed(KeyCode::Up) { 1. }
+            else if keys.just_pressed(KeyCode::Down) { -1. }
+            else { continue; };
+
+        let scale_increase = 0.1*i;
+        
+        //loop through all body parts and scale them accordingly
+        for child in children.iter() {
+            let (mut child_transform, body_part) = unsafe { stickman_parts.get_unchecked(*child).unwrap() };
+            child_transform.scale += scale_increase;
+            scale_limb(body_part, &mut child_transform, scale_increase);
+            // let increment = child_transform.local_y()*i*0.1;
+            // child_transform.translation += increment;
+        }
+
+    }
+}
+
+#[inline]
+pub fn calculate_limb_origin(limb_depth: f32, limb_radius: f32, limb_transform: &Transform) -> Vec3 {
+    limb_transform.translation + (limb_transform.local_y() * (limb_depth+limb_radius))
+}
+
+#[derive(Component)]
+pub struct StickmanBody;
+
+#[derive(Component)]
+pub struct StickmanBodyPart {
+    /// Radius of capsule
+    pub radius: f32,
+    /// Depth of capsule
+    pub depth: f32,
+}
+
+impl StickmanBodyPart {
+    #[inline(always)]
+    pub fn new(radius: f32, depth: f32) -> Self {
+        Self { radius, depth }
+    }
+
+    #[inline(always)]
+    pub fn length(&self) -> f32 {
+        self.depth + self.radius
+    }
 }
 
 #[derive(Default, Bundle)]
