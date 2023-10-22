@@ -12,6 +12,7 @@ use bevy::{
 };
 use bevy_flycam::{NoCameraPlayerPlugin, FlyCam};
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
+use bevy_rapier3d::{prelude::{RapierPhysicsPlugin, NoUserData}, render::RapierDebugRenderPlugin};
 use utils::LogFramesPlugin;
 
 
@@ -30,9 +31,12 @@ fn main() {
             ),
             WireframePlugin::default(),
             WorldInspectorPlugin::default(),
-            LogFramesPlugin::default(),
+            // LogFramesPlugin::default(),
             MaterialPlugin::<TestMaterial>::default(),
-            NoCameraPlayerPlugin
+            NoCameraPlayerPlugin,
+
+            RapierPhysicsPlugin::<NoUserData>::default(),
+            RapierDebugRenderPlugin::default(),
         ))
         .add_systems(Startup, setup)
         .add_systems(Update, test_update)
@@ -76,7 +80,7 @@ fn setup(
 ) {
     let material = standard_materials.add(Color::PURPLE.into());
 
-    let scale = 100.;
+    let scale = 50.; 
 
     let radius = 0.03_f32 * scale;
     let torso_depth = 0.6_f32 * scale;
@@ -142,7 +146,13 @@ fn setup(
 
     
     //spawning entities
-    // let body = commands.spawn()
+    let body_entity = commands.spawn((
+        Transform::IDENTITY,
+        Visibility::default(),
+        ComputedVisibility::default(),
+        GlobalTransform::default(),
+        StickmanBody
+    )).id();
     let arm1_entity = spawn_mesh!(
         meshes.add(arm.into()), 
         arm,
@@ -181,10 +191,11 @@ fn setup(
         leg2_transform
     );
 
-    add_child!(commands, torso_entity, arm1_entity);
-    add_child!(commands, torso_entity, arm2_entity);
-    add_child!(commands, torso_entity, leg1_entity);
-    add_child!(commands, torso_entity, leg2_entity);
+    add_child!(commands, body_entity, torso_entity);
+    add_child!(commands, body_entity, arm1_entity);
+    add_child!(commands, body_entity, arm2_entity);
+    add_child!(commands, body_entity, leg1_entity);
+    add_child!(commands, body_entity, leg2_entity);
 
     //flycam
     commands.spawn((
@@ -208,6 +219,9 @@ fn test_update(
         }
     }
 }
+
+#[derive(Component)]
+pub struct StickmanBody;
 
 #[derive(Component, Reflect)]
 pub struct TestComponent {
