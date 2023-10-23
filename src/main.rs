@@ -289,27 +289,23 @@ fn stickman_body_setup(
 }
 
 fn test_update(
-    mut stickman_bodies: Query<(&mut Transform, &Children), With<StickmanBody>>,
-    stickman_parts: Query<(&mut Transform, &StickmanBodyPart) , Without<StickmanBody>>,
+    mut multibody_joints: Query<&mut MultibodyJoint>,
     keys: Res<Input<KeyCode>>,
 ) {
-    for (mut transform, children) in stickman_bodies.iter_mut() {
-        let i = 
-            if keys.just_pressed(KeyCode::Up) { 1. }
-            else if keys.just_pressed(KeyCode::Down) { -1. }
-            else { continue; };
+    let dir = 
+        if keys.pressed(KeyCode::Up) { 1. }
+        else if keys.pressed(KeyCode::Down) { -1. }
+        else { 0. };
 
-        let scale_increase = 0.1*i;
-        
-        //loop through all body parts and scale them accordingly
-        for child in children.iter() {
-            let (mut child_transform, body_part) = unsafe { stickman_parts.get_unchecked(*child).unwrap() };
-            child_transform.scale += scale_increase;
-            scale_limb(body_part, &mut child_transform, scale_increase);
-            // let increment = child_transform.local_y()*i*0.1;
-            // child_transform.translation += increment;
-        }
-
+    for mut multibody_joint in multibody_joints.iter_mut() {
+        let  joint =  &mut multibody_joint.data;
+        joint.set_motor(
+            JointAxis::AngZ,
+            f32::to_radians(0.),
+            f32::to_radians(30.) * dir,
+            0.9,
+            0.9
+        );
     }
 }
 
