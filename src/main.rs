@@ -248,14 +248,18 @@ fn stickman_body_setup(
     let arm_segment_depth = arm_depth/2.;
     let arm_segment_len = arm_segment_depth+radius;
     let joint_gap_size = radius*1.25;
-    let joint = SphericalJointBuilder::new()
+    // let joint = SphericalJointBuilder::new()
+    //     .local_anchor1(Vec3::new((arm_segment_len+joint_gap_size)/2., 0., 0.))
+    //     .local_anchor2(Vec3::new(-(arm_segment_len+joint_gap_size)/2., 0., 0.))
+    //     .limits(JointAxis::AngX, [0., 0.])
+    //     .limits(JointAxis::AngY, [0., 0.])
+    //     .limits(JointAxis::AngZ, [0., 135_f32.to_radians()])
+    //     ;
+    let joint = RevoluteJointBuilder::new(Vec3::Z)
         .local_anchor1(Vec3::new((arm_segment_len+joint_gap_size)/2., 0., 0.))
         .local_anchor2(Vec3::new(-(arm_segment_len+joint_gap_size)/2., 0., 0.))
-        .limits(JointAxis::AngX, [0., 0.])
-        .limits(JointAxis::AngY, [0., 0.])
-        .limits(JointAxis::AngZ, [0., 135_f32.to_radians()])
+        .limits([0., 135_f32.to_radians()])
         ;
-
 
     let par_entity = commands.spawn(TransformBundle::from_transform(Transform::from_xyz(5., 0., 0.)))
         .insert((
@@ -263,11 +267,12 @@ fn stickman_body_setup(
             Collider::capsule(Vec3::X * (-arm_segment_depth/2.), Vec3::X * Vec3::X * (arm_segment_depth/2.), radius),
             // Collider::cuboid(2.5, 0.5, 0.5),
         )).id();
+        
 
     commands.spawn((
         // RigidBody::KinematicPositionBased,
         RigidBody::Dynamic,
-        ImpulseJoint::new(par_entity, joint),
+        MultibodyJoint::new(par_entity, joint),
         Collider::capsule(Vec3::X * (-arm_segment_depth/2.), Vec3::X * Vec3::X * (arm_segment_depth/2.), radius),
         // Collider::cuboid(2.5, 0.5, 0.5),
     ))
