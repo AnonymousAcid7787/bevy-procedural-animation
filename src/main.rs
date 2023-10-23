@@ -8,11 +8,11 @@ use bevy::{
         RenderPlugin, 
         settings::WgpuSettings
     }, 
-    pbr::wireframe::WireframePlugin, reflect::{TypePath, TypeUuid}, ecs::component
+    pbr::wireframe::WireframePlugin, reflect::{TypePath, TypeUuid}, ecs::component, math::vec3
 };
-use bevy_flycam::{NoCameraPlayerPlugin, FlyCam};
+use bevy_flycam::{NoCameraPlayerPlugin, FlyCam, MovementSettings};
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
-use bevy_rapier3d::{prelude::{RapierPhysicsPlugin, NoUserData, Collider, RigidBody}, render::RapierDebugRenderPlugin};
+use bevy_rapier3d::{prelude::*, render::RapierDebugRenderPlugin, rapier::prelude::JointAxis};
 use stickman_transform::scale_limb;
 
 
@@ -37,7 +37,6 @@ fn main() {
             NoCameraPlayerPlugin,
 
             RapierPhysicsPlugin::<NoUserData>::default(),
-            RapierDebugRenderPlugin::default(),
         ))
         .add_systems(Startup, ( 
             stickman_body_setup,
@@ -45,6 +44,12 @@ fn main() {
         ))
         .add_systems(Update, test_update)
         .register_type::<TestComponent>();
+    
+    #[cfg(debug_assertions)]
+    app.add_plugins(RapierDebugRenderPlugin {
+        // mode: DebugRenderMode::all(),
+        ..Default::default()
+    });
 
 
     app.run();
@@ -52,7 +57,10 @@ fn main() {
 }
 
 fn scene_setup(
-    mut commands: Commands
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut standard_materials: ResMut<Assets<StandardMaterial>>,
+    mut flycam_settings: ResMut<MovementSettings>
 ) {
     //flycam
     commands.spawn((
@@ -60,7 +68,21 @@ fn scene_setup(
             transform: Transform::from_xyz(0., 0., 2.).looking_at(Vec3::ZERO, Vec3::Y),
             ..Default::default()
         },
-        FlyCam
+        FlyCam,
+        Collider::cuboid(0.1, 0.1, 0.1)
+    ));
+
+    flycam_settings.speed = 2.;
+
+    //ground
+    commands.spawn((
+        PbrBundle {
+            material: standard_materials.add(Color::WHITE.into()),
+            mesh: meshes.add(shape::Box::new(100., 1., 100.).into()),
+            transform: Transform::from_xyz(0., -5., 0.),
+            ..Default::default()
+        },
+        Collider::cuboid(50., 0.5, 50.)
     ));
 }
 
@@ -222,17 +244,43 @@ fn stickman_body_setup(
     add_child!(commands, body_mesh_entity, leg1_entity);
     add_child!(commands, body_mesh_entity, leg2_entity);
 
-    //colliders
-    // let _ = commands.spawn((//remove the "let _ ="
-    //     PbrBundle {
-    //         mesh: meshes.add(arm.into()), 
-    //         material: material.clone(),
-    //         transform: arm1_transform.clone(),//remove this .clone() after done
-    //         ..Default::default()
-    //     },
-    //     RigidBody::Dynamic,
-    //     Collider::capsule(arm1_transform.local_y()+arm_len/2., arm1_transform.local_y()-arm_len/2., radius)
-    // )).id();
+    //joints
+    let arm_segment_depth = arm_depth/2.;
+    let arm_segment_len = arm_segment_depth+radius;
+    let joint_gap_size = radius*1.25;
+    let joint = SphericalJointBuilder::new()
+        .local_anchor1(Vec3::new((arm_segment_len+joint_gap_size)/2., 0., 0.))
+        .local_anchor2(Vec3::new(-(arm_segment_len+joint_gap_size)/2., 0., 0.))
+        .limits(JointAxis::AngX, [0., 0.])
+        .limits(JointAxis::AngY, [0., 0.])
+        .limits(JointAxis::AngZ, [0., 135_f32.to_radians()])
+        ;
+
+
+    let par_entity = commands.spawn(TransformBundle::from_transform(Transform::from_xyz(5., 0., 0.)))
+        .insert((
+            RigidBody::Fixed,
+            Collider::capsule(Vec3::X * (-arm_segment_depth/2.), Vec3::X * Vec3::X * (arm_segment_depth/2.), radius),
+            // Collider::cuboid(2.5, 0.5, 0.5),
+        )).id();
+
+    commands.spawn((
+        // RigidBody::KinematicPositionBased,
+        RigidBody::Dynamic,
+        ImpulseJoint::new(par_entity, joint),
+        Collider::capsule(Vec3::X * (-arm_segment_depth/2.), Vec3::X * Vec3::X * (arm_segment_depth/2.), radius),
+        // Collider::cuboid(2.5, 0.5, 0.5),
+    ))
+        .set_parent(par_entity)
+        .insert(
+            PbrBundle {
+                mesh: meshes.add(shape::Box::new(5., 1., 1.).into()),
+                material: standard_materials.add(Color::BLUE.into()),
+                transform: Transform::from_xyz(arm_segment_len+joint_gap_size, 0., 0.).with_rotation(Quat::from_euler(EulerRot::XYZ, 0., 0., 0.)),
+                ..Default::default()
+            },
+        );
+
 }
 
 fn test_update(
