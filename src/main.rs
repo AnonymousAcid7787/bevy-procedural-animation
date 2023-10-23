@@ -259,6 +259,12 @@ fn stickman_body_setup(
         .local_anchor1(Vec3::new((arm_segment_len+joint_gap_size)/2., 0., 0.))
         .local_anchor2(Vec3::new(-(arm_segment_len+joint_gap_size)/2., 0., 0.))
         .limits([0., 135_f32.to_radians()])
+        .motor(
+            f32::to_radians(0.),
+            f32::to_radians(30.),
+            0.9,
+            0.9
+        )
         ;
 
     let par_entity = commands.spawn(TransformBundle::from_transform(Transform::from_xyz(5., 0., 0.)))
@@ -293,19 +299,20 @@ fn test_update(
     keys: Res<Input<KeyCode>>,
 ) {
     let dir = 
-        if keys.pressed(KeyCode::Up) { 1. }
-        else if keys.pressed(KeyCode::Down) { -1. }
+        if keys.pressed(KeyCode::J) { 1. }
+        else if keys.pressed(KeyCode::K) { -1. }
         else { 0. };
 
     for mut multibody_joint in multibody_joints.iter_mut() {
-        let  joint =  &mut multibody_joint.data;
-        joint.set_motor(
-            JointAxis::AngZ,
-            f32::to_radians(0.),
-            f32::to_radians(30.) * dir,
-            0.9,
-            0.9
-        );
+        let joint =  &mut multibody_joint.data;
+        joint.set_motor(JointAxis::AngZ, f32::clamp(30. * dir, 0., 135_f32.to_radians()), 30. * dir, 0.9, 0.9);
+        // joint.set_motor(
+        //     JointAxis::AngZ,
+        //     f32::to_radians(0.),
+        //     f32::to_radians(30.) * dir,
+        //     0.9,
+        //     0.9
+        // );
     }
 }
 
