@@ -6,13 +6,13 @@ use bevy::{
     render::{
         render_resource::{PolygonMode, AsBindGroup}, 
         RenderPlugin, 
-        settings::WgpuSettings
+        settings::{WgpuSettings, Backends, PowerPreference}
     }, 
     pbr::wireframe::WireframePlugin, reflect::{TypePath, TypeUuid}, ecs::component, math::vec3
 };
 use bevy_flycam::{NoCameraPlayerPlugin, FlyCam, MovementSettings};
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
-use bevy_rapier3d::{prelude::*, render::RapierDebugRenderPlugin, rapier::prelude::JointAxis};
+use bevy_rapier3d::{prelude::*, render::RapierDebugRenderPlugin, rapier::prelude::{JointAxis, MotorModel, MultibodyJointHandle, JointMotor}};
 use stickman_transform::scale_limb;
 
 
@@ -25,7 +25,8 @@ fn main() {
             DefaultPlugins.set(
                 RenderPlugin {
                     wgpu_settings: WgpuSettings {
-                        // backends: Some(Backends::DX12),
+                        backends: Some(Backends::DX12),
+                        power_preference: PowerPreference::HighPerformance,
                         ..Default::default()
                     }
                 }
@@ -47,7 +48,6 @@ fn main() {
     
     #[cfg(debug_assertions)]
     app.add_plugins(RapierDebugRenderPlugin {
-        // mode: DebugRenderMode::all(),
         ..Default::default()
     });
 
@@ -136,6 +136,8 @@ fn stickman_body_setup(
     let leg_len = leg_depth + radius*2.;
     let latitudes = 8;
     let longitudes = 16;
+    let arm_segment_depth = arm_depth/2.;
+    let arm_segment_len = arm_segment_depth+radius;
 
     //shapes
     let torso = shape::Capsule {
@@ -157,6 +159,14 @@ fn stickman_body_setup(
     let leg = shape::Capsule {
         radius,
         depth: leg_depth,
+        latitudes,
+        longitudes,
+        ..Default::default()
+    };
+
+    let arm_segment = shape::Capsule {
+        depth: arm_segment_depth,
+        radius,
         latitudes,
         longitudes,
         ..Default::default()
@@ -245,49 +255,39 @@ fn stickman_body_setup(
     add_child!(commands, body_mesh_entity, leg2_entity);
 
     //joints
-    let arm_segment_depth = arm_depth/2.;
-    let arm_segment_len = arm_segment_depth+radius;
     let joint_gap_size = radius*1.25;
-    // let joint = SphericalJointBuilder::new()
-    //     .local_anchor1(Vec3::new((arm_segment_len+joint_gap_size)/2., 0., 0.))
-    //     .local_anchor2(Vec3::new(-(arm_segment_len+joint_gap_size)/2., 0., 0.))
-    //     .limits(JointAxis::AngX, [0., 0.])
-    //     .limits(JointAxis::AngY, [0., 0.])
-    //     .limits(JointAxis::AngZ, [0., 135_f32.to_radians()])
-    //     ;
+    let joint_offset = (arm_segment_len+joint_gap_size)/2.;
+    let lock_pos = f32::to_radians(0.);
     let joint = RevoluteJointBuilder::new(Vec3::Z)
-        .local_anchor1(Vec3::new((arm_segment_len+joint_gap_size)/2., 0., 0.))
-        .local_anchor2(Vec3::new(-(arm_segment_len+joint_gap_size)/2., 0., 0.))
-        .limits([0., 135_f32.to_radians()])
+        .local_anchor1(Vec3::new(joint_offset, 0., 0.))
+        .local_anchor2(Vec3::new(0., -joint_offset, 0.))
         .motor(
-            f32::to_radians(0.),
-            f32::to_radians(30.),
-            0.9,
-            0.9
+            0_f32.to_radians(),
+            30_f32.to_radians(),
+            0.5,
+            0.5
         )
         ;
 
-    let par_entity = commands.spawn(TransformBundle::from_transform(Transform::from_xyz(5., 0., 0.)))
+    let par_entity = commands.spawn(SpatialBundle::from_transform(Transform::from_xyz(2., 0., 0.)))
         .insert((
             RigidBody::Fixed,
-            Collider::capsule(Vec3::X * (-arm_segment_depth/2.), Vec3::X * Vec3::X * (arm_segment_depth/2.), radius),
-            // Collider::cuboid(2.5, 0.5, 0.5),
+            Collider::capsule(Vec3::X * (-arm_segment_depth/2.), Vec3::X * (arm_segment_depth/2.), radius),
         )).id();
         
 
     commands.spawn((
-        // RigidBody::KinematicPositionBased,
         RigidBody::Dynamic,
         MultibodyJoint::new(par_entity, joint),
-        Collider::capsule(Vec3::X * (-arm_segment_depth/2.), Vec3::X * Vec3::X * (arm_segment_depth/2.), radius),
-        // Collider::cuboid(2.5, 0.5, 0.5),
+        // Collider::capsule(Vec3::Y * (-arm_segment_depth/2.), Vec3::Y * (arm_segment_depth/2.), radius),
     ))
         .set_parent(par_entity)
         .insert(
             PbrBundle {
-                mesh: meshes.add(shape::Box::new(5., 1., 1.).into()),
+                mesh: meshes.add(arm_segment.into()),
                 material: standard_materials.add(Color::BLUE.into()),
-                transform: Transform::from_xyz(arm_segment_len+joint_gap_size, 0., 0.).with_rotation(Quat::from_euler(EulerRot::XYZ, 0., 0., 0.)),
+                transform: Transform::from_xyz(arm_segment_len+joint_gap_size, 0., 0.),
+                    // .with_rotation(Quat::from_euler(EulerRot::XYZ, 0., 0., 90_f32.to_radians())),
                 ..Default::default()
             },
         );
@@ -298,21 +298,37 @@ fn test_update(
     mut multibody_joints: Query<&mut MultibodyJoint>,
     keys: Res<Input<KeyCode>>,
 ) {
-    let dir = 
-        if keys.pressed(KeyCode::J) { 1. }
-        else if keys.pressed(KeyCode::K) { -1. }
-        else { 0. };
+    let mut dir = 
+        if keys.pressed(KeyCode::Up) { f32::to_radians(1.) }
+        else if keys.pressed(KeyCode::Down) { f32::to_radians(-1.) }
+        else { f32::to_radians(0.) };
+    dir *= 10.;
 
     for mut multibody_joint in multibody_joints.iter_mut() {
-        let joint =  &mut multibody_joint.data;
-        joint.set_motor(JointAxis::AngZ, f32::clamp(30. * dir, 0., 135_f32.to_radians()), 30. * dir, 0.9, 0.9);
-        // joint.set_motor(
-        //     JointAxis::AngZ,
-        //     f32::to_radians(0.),
-        //     f32::to_radians(30.) * dir,
-        //     0.9,
-        //     0.9
-        // );
+        let joint =  multibody_joint.data.as_revolute_mut().unwrap();
+        let current_target_pos = joint.motor().unwrap().target_pos;
+        let motor = joint.motor().unwrap();
+        println!("
+        target_vel: {0}
+        target_pos: {1}
+        stiffness: {2}
+        damping: {3}
+        max_force: {4}
+        impulse: {5}
+        ",
+        motor.target_vel,
+        motor.target_pos,
+        motor.stiffness,
+        motor.damping,
+        motor.max_force,
+        motor.impulse);
+
+        joint.set_motor(
+            current_target_pos + dir,
+            f32::to_radians(30.),
+            0.1,
+            0.1
+        );
     }
 }
 
