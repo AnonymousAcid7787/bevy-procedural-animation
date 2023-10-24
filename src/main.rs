@@ -275,8 +275,9 @@ fn stickman_body_setup(
     let joint = RevoluteJointBuilder::new(Vec3::Z)
         .local_anchor1(Vec3::new(joint_offset, 0., 0.))
         .local_anchor2(Vec3::new(0., -joint_offset, 0.))
+        .limits([f32::to_radians(-90.), f32::to_radians(60.)])
         .motor(
-            0_f32.to_radians(),
+            -90_f32.to_radians(),
             30_f32.to_radians(),
             0.5,
             0.5
@@ -295,13 +296,12 @@ fn stickman_body_setup(
         .insert((
             RigidBody::Dynamic,
             MultibodyJoint::new(par_entity, joint),
-            Collider::capsule(Vec3::Y * (-arm_segment_depth/2.), Vec3::Y * (arm_segment_depth/2.), radius),
+            // Collider::capsule(Vec3::Y * (-arm_segment_depth/2.), Vec3::Y * (arm_segment_depth/2.), radius),
 
             PbrBundle {
                 mesh: meshes.add(arm_segment.into()),
                 material: standard_materials.add(Color::BLUE.into()),
                 transform: Transform::from_xyz(arm_segment_len+joint_gap_size, 0., 0.),
-                    // .with_rotation(Quat::from_euler(EulerRot::XYZ, 0., 0., 90_f32.to_radians())),
                 ..Default::default()
             },
             Sleeping::default()
@@ -314,24 +314,31 @@ fn test_update(
     keys: Res<Input<KeyCode>>,
 ) {
     let mut dir = 
-        if keys.pressed(KeyCode::Up) { f32::to_radians(1.) }
-        else if keys.pressed(KeyCode::Down) { f32::to_radians(-1.) }
+        if keys.pressed(KeyCode::Up) { f32::to_radians(0.5) }
+        else if keys.pressed(KeyCode::Down) { f32::to_radians(-0.5) }
         else { f32::to_radians(0.) };
     dir *= 10.;
 
     for (mut multibody_joint, mut sleeping) in multibody_joints.iter_mut() {
         let joint =  multibody_joint.data.as_revolute_mut().unwrap();
         let current_target_pos = joint.motor().unwrap().target_pos;
+        let limits = joint.limits().unwrap();
+
+        let new_target_pos = f32::clamp(
+            current_target_pos + dir,
+            limits.min,
+            limits.max
+        );
 
         if dir != 0. {
             sleeping.sleeping = false;
         }
 
         joint.set_motor(
-            current_target_pos + dir,
+            new_target_pos,
             f32::to_radians(30.),
             0.1,
-            0.1
+            0.01
         );
     }
 
