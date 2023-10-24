@@ -52,8 +52,6 @@ struct FrameDiagnostics {
     pub time_passed: f32,
     // Amount of frames since last log
     pub frames: u32,
-    // The time since the last frame
-    pub current_frame_delta: f32,
 }
 
 fn frame_diagnostics_system (

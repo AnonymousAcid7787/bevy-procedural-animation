@@ -8,16 +8,14 @@ use bevy::{
         RenderPlugin, 
         settings::{WgpuSettings, Backends, PowerPreference}
     }, 
-    pbr::wireframe::WireframePlugin, reflect::{TypePath, TypeUuid}, ecs::component, math::vec3
+    pbr::wireframe::WireframePlugin, reflect::{TypePath, TypeUuid}
 };
 use bevy_flycam::{NoCameraPlayerPlugin, FlyCam, MovementSettings};
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
-use bevy_rapier3d::{prelude::*, render::RapierDebugRenderPlugin, rapier::prelude::{JointAxis, MotorModel, MultibodyJointHandle, JointMotor}};
-use stickman_transform::scale_limb;
+use bevy_rapier3d::{prelude::*, render::RapierDebugRenderPlugin};
 
 
 mod utils;
-mod stickman_transform;
 
 fn main() {
     let mut app = App::new();
@@ -257,7 +255,6 @@ fn stickman_body_setup(
     //joints
     let joint_gap_size = radius*1.25;
     let joint_offset = (arm_segment_len+joint_gap_size)/2.;
-    let lock_pos = f32::to_radians(0.);
     let joint = RevoluteJointBuilder::new(Vec3::Z)
         .local_anchor1(Vec3::new(joint_offset, 0., 0.))
         .local_anchor2(Vec3::new(0., -joint_offset, 0.))
@@ -274,12 +271,12 @@ fn stickman_body_setup(
             RigidBody::Fixed,
             Collider::capsule(Vec3::X * (-arm_segment_depth/2.), Vec3::X * (arm_segment_depth/2.), radius),
         )).id();
-        
+    
 
     commands.spawn((
         RigidBody::Dynamic,
         MultibodyJoint::new(par_entity, joint),
-        // Collider::capsule(Vec3::Y * (-arm_segment_depth/2.), Vec3::Y * (arm_segment_depth/2.), radius),
+        Collider::capsule(Vec3::Y * (-arm_segment_depth/2.), Vec3::Y * (arm_segment_depth/2.), radius),
     ))
         .set_parent(par_entity)
         .insert(
@@ -307,21 +304,6 @@ fn test_update(
     for mut multibody_joint in multibody_joints.iter_mut() {
         let joint =  multibody_joint.data.as_revolute_mut().unwrap();
         let current_target_pos = joint.motor().unwrap().target_pos;
-        let motor = joint.motor().unwrap();
-        println!("
-        target_vel: {0}
-        target_pos: {1}
-        stiffness: {2}
-        damping: {3}
-        max_force: {4}
-        impulse: {5}
-        ",
-        motor.target_vel,
-        motor.target_pos,
-        motor.stiffness,
-        motor.damping,
-        motor.max_force,
-        motor.impulse);
 
         joint.set_motor(
             current_target_pos + dir,
@@ -330,11 +312,6 @@ fn test_update(
             0.1
         );
     }
-}
-
-#[inline]
-pub fn calculate_limb_origin(limb_depth: f32, limb_radius: f32, limb_transform: &Transform) -> Vec3 {
-    limb_transform.translation + (limb_transform.local_y() * (limb_depth+limb_radius))
 }
 
 #[derive(Component)]
