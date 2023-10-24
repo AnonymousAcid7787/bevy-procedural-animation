@@ -19,16 +19,20 @@ mod utils;
 
 fn main() {
     let mut app = App::new();
-    app.add_plugins((
-            DefaultPlugins.set(
-                RenderPlugin {
-                    wgpu_settings: WgpuSettings {
-                        backends: Some(Backends::DX12),
-                        power_preference: PowerPreference::HighPerformance,
-                        ..Default::default()
-                    }
+
+    let default_plugins = 
+        DefaultPlugins.set(
+            RenderPlugin {
+                wgpu_settings: WgpuSettings {
+                    // backends: Some(Backends::DX12),
+                    power_preference: PowerPreference::HighPerformance,
+                    ..Default::default()
                 }
-            ),
+            }
+        );
+
+    app.add_plugins((
+            default_plugins,
             WireframePlugin::default(),
             WorldInspectorPlugin::default(),
             // LogFramesPlugin::default(),
@@ -121,6 +125,7 @@ fn stickman_body_setup(
     mut meshes: ResMut<Assets<Mesh>>,
     mut standard_materials: ResMut<Assets<StandardMaterial>>,
 ) {
+    
     let material = standard_materials.add(Color::PURPLE.into());
 
     let scale = 1.;
@@ -137,31 +142,6 @@ fn stickman_body_setup(
     let arm_segment_depth = arm_depth/2.;
     let arm_segment_len = arm_segment_depth+radius;
 
-    //shapes
-    let torso = shape::Capsule {
-        radius,
-        depth: torso_depth,
-        latitudes,
-        longitudes,
-        ..Default::default()
-    };
-
-    let arm = shape::Capsule {
-        radius,
-        depth: arm_depth,
-        latitudes,
-        longitudes,
-        ..Default::default()
-    };
-
-    let leg = shape::Capsule {
-        radius,
-        depth: leg_depth,
-        latitudes,
-        longitudes,
-        ..Default::default()
-    };
-
     let arm_segment = shape::Capsule {
         depth: arm_segment_depth,
         radius,
@@ -169,88 +149,125 @@ fn stickman_body_setup(
         longitudes,
         ..Default::default()
     };
-
-    //transforms
-    let mut arm1_transform = Transform::from_xyz(0., 0., 0.);
-        arm1_transform.rotate_around(
-            Vec3::new(0., arm_len/2., 0.), 
-            Quat::from_axis_angle(Vec3::Z, 45_f32.to_radians())
-        );
     
-    let mut arm2_transform = Transform::from_xyz(0., 0., 0.);
-        arm2_transform.rotate_around(
-            Vec3::new(0., arm_len/2., 0.), 
-            Quat::from_axis_angle(Vec3::Z, -45_f32.to_radians())
-        );
+    //commented for now
+    {
 
-    let torso_transform = Transform::from_xyz(0., 0., 0.);
+    // //shapes
+    // let torso = shape::Capsule {
+    //     radius,
+    //     depth: torso_depth,
+    //     latitudes,
+    //     longitudes,
+    //     ..Default::default()
+    // };
 
-    let mut leg1_transform = Transform::from_xyz(0., -torso_len - (leg_len - torso_len)/2., 0.);
-        leg1_transform.rotate_around(
-            Vec3::new(0., -torso_len/2., 0.), 
-            Quat::from_axis_angle(Vec3::Z, 30_f32.to_radians())
-        );
-    let mut leg2_transform = Transform::from_xyz(0., -torso_len - (leg_len - torso_len)/2., 0.);
-        leg2_transform.rotate_around(
-            Vec3::new(0., -torso_len/2., 0.), 
-            Quat::from_axis_angle(Vec3::Z, -30_f32.to_radians())
-        );
+    // let arm = shape::Capsule {
+    //     radius,
+    //     depth: arm_depth,
+    //     latitudes,
+    //     longitudes,
+    //     ..Default::default()
+    // };
+
+    // let leg = shape::Capsule {
+    //     radius,
+    //     depth: leg_depth,
+    //     latitudes,
+    //     longitudes,
+    //     ..Default::default()
+    // };
+
+    // let arm_segment = shape::Capsule {
+    //     depth: arm_segment_depth,
+    //     radius,
+    //     latitudes,
+    //     longitudes,
+    //     ..Default::default()
+    // };
+
+    // //transforms
+    // let mut arm1_transform = Transform::from_xyz(0., 0., 0.);
+    //     arm1_transform.rotate_around(
+    //         Vec3::new(0., arm_len/2., 0.), 
+    //         Quat::from_axis_angle(Vec3::Z, 45_f32.to_radians())
+    //     );
     
-    //spawning entities
-    let body_mesh_entity = commands.spawn((
-        StickmanMeshParentBundle::default(),
-        StickmanBody
-    )).id();
-    let arm1_entity = spawn_body_part!(
-        meshes.add(arm.into()),
-        commands, 
-        material.clone(),
-        arm1_transform,
-        arm_depth,
-        radius
-    );
+    // let mut arm2_transform = Transform::from_xyz(0., 0., 0.);
+    //     arm2_transform.rotate_around(
+    //         Vec3::new(0., arm_len/2., 0.), 
+    //         Quat::from_axis_angle(Vec3::Z, -45_f32.to_radians())
+    //     );
 
-    let arm2_entity = spawn_body_part!(
-        meshes.add(arm.into()),
-        commands, 
-        material.clone(),
-        arm2_transform,
-        arm_depth,
-        radius
-    );
- 
-    let torso_entity = spawn_body_part!(
-        meshes.add(torso.into()), 
-        commands, 
-        material.clone(),
-        torso_transform,
-        torso_depth,
-        radius
-    );
- 
-    let leg1_entity = spawn_body_part!(
-        meshes.add(leg.into()), 
-        commands, 
-        material.clone(),
-        leg1_transform,
-        leg_depth,
-        radius
-    );
-    let leg2_entity = spawn_body_part!(
-        meshes.add(leg.into()), 
-        commands, 
-        material.clone(),
-        leg2_transform,
-        leg_depth,
-        radius
-    );
+    // let torso_transform = Transform::from_xyz(0., 0., 0.);
 
-    //parent heirarchy stuff
-    add_child!(commands, body_mesh_entity, torso_entity);
-    add_child!(commands, body_mesh_entity, arm1_entity);
-    add_child!(commands, body_mesh_entity, arm2_entity);
-    add_child!(commands, body_mesh_entity, leg1_entity);
-    add_child!(commands, body_mesh_entity, leg2_entity);
+    // let mut leg1_transform = Transform::from_xyz(0., -torso_len - (leg_len - torso_len)/2., 0.);
+    //     leg1_transform.rotate_around(
+    //         Vec3::new(0., -torso_len/2., 0.), 
+    //         Quat::from_axis_angle(Vec3::Z, 30_f32.to_radians())
+    //     );
+    // let mut leg2_transform = Transform::from_xyz(0., -torso_len - (leg_len - torso_len)/2., 0.);
+    //     leg2_transform.rotate_around(
+    //         Vec3::new(0., -torso_len/2., 0.), 
+    //         Quat::from_axis_angle(Vec3::Z, -30_f32.to_radians())
+    //     );
+    
+    // //spawning entities
+    // let body_mesh_entity = commands.spawn((
+    //     StickmanMeshParentBundle::default(),
+    //     StickmanBody
+    // )).id();
+    // let arm1_entity = spawn_body_part!(
+    //     meshes.add(arm.into()),
+    //     commands, 
+    //     material.clone(),
+    //     arm1_transform,
+    //     arm_depth,
+    //     radius
+    // );
+
+    // let arm2_entity = spawn_body_part!(
+    //     meshes.add(arm.into()),
+    //     commands, 
+    //     material.clone(),
+    //     arm2_transform,
+    //     arm_depth,
+    //     radius
+    // );
+ 
+    // let torso_entity = spawn_body_part!(
+    //     meshes.add(torso.into()), 
+    //     commands, 
+    //     material.clone(),
+    //     torso_transform,
+    //     torso_depth,
+    //     radius
+    // );
+ 
+    // let leg1_entity = spawn_body_part!(
+    //     meshes.add(leg.into()), 
+    //     commands, 
+    //     material.clone(),
+    //     leg1_transform,
+    //     leg_depth,
+    //     radius
+    // );
+    // let leg2_entity = spawn_body_part!(
+    //     meshes.add(leg.into()), 
+    //     commands, 
+    //     material.clone(),
+    //     leg2_transform,
+    //     leg_depth,
+    //     radius
+    // );
+
+    // //parent heirarchy stuff
+    // add_child!(commands, body_mesh_entity, torso_entity);
+    // add_child!(commands, body_mesh_entity, arm1_entity);
+    // add_child!(commands, body_mesh_entity, arm2_entity);
+    // add_child!(commands, body_mesh_entity, leg1_entity);
+    // add_child!(commands, body_mesh_entity, leg2_entity);
+    }
 
     //joints
     let joint_gap_size = radius*1.25;
@@ -266,20 +283,20 @@ fn stickman_body_setup(
         )
         ;
 
-    let par_entity = commands.spawn(SpatialBundle::from_transform(Transform::from_xyz(2., 0., 0.)))
-        .insert((
-            RigidBody::Fixed,
-            Collider::capsule(Vec3::X * (-arm_segment_depth/2.), Vec3::X * (arm_segment_depth/2.), radius),
-        )).id();
+    let par_entity = commands.spawn((
+        SpatialBundle::default(),
+        RigidBody::Fixed,
+        Collider::capsule(Vec3::X * (-arm_segment_depth/2.), Vec3::X * (arm_segment_depth/2.), radius),
+    )).id();
     
 
-    commands.spawn((
-        RigidBody::Dynamic,
-        MultibodyJoint::new(par_entity, joint),
-        Collider::capsule(Vec3::Y * (-arm_segment_depth/2.), Vec3::Y * (arm_segment_depth/2.), radius),
-    ))
+    commands.spawn_empty()
         .set_parent(par_entity)
-        .insert(
+        .insert((
+            RigidBody::Dynamic,
+            MultibodyJoint::new(par_entity, joint),
+            Collider::capsule(Vec3::Y * (-arm_segment_depth/2.), Vec3::Y * (arm_segment_depth/2.), radius),
+
             PbrBundle {
                 mesh: meshes.add(arm_segment.into()),
                 material: standard_materials.add(Color::BLUE.into()),
@@ -287,12 +304,13 @@ fn stickman_body_setup(
                     // .with_rotation(Quat::from_euler(EulerRot::XYZ, 0., 0., 90_f32.to_radians())),
                 ..Default::default()
             },
-        );
+            Sleeping::default()
+        ));
 
 }
 
 fn test_update(
-    mut multibody_joints: Query<&mut MultibodyJoint>,
+    mut multibody_joints: Query<(&mut MultibodyJoint, &mut Sleeping)>,
     keys: Res<Input<KeyCode>>,
 ) {
     let mut dir = 
@@ -301,9 +319,13 @@ fn test_update(
         else { f32::to_radians(0.) };
     dir *= 10.;
 
-    for mut multibody_joint in multibody_joints.iter_mut() {
+    for (mut multibody_joint, mut sleeping) in multibody_joints.iter_mut() {
         let joint =  multibody_joint.data.as_revolute_mut().unwrap();
         let current_target_pos = joint.motor().unwrap().target_pos;
+
+        if dir != 0. {
+            sleeping.sleeping = false;
+        }
 
         joint.set_motor(
             current_target_pos + dir,
@@ -312,6 +334,7 @@ fn test_update(
             0.1
         );
     }
+
 }
 
 #[derive(Component)]
