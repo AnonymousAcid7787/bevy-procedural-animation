@@ -207,7 +207,7 @@ pub fn stickman_body_setup(
         Collider::capsule(Vec3::X * (-arm_segment_depth/2.), Vec3::X * (arm_segment_depth/2.), radius),
         ActiveHooks::FILTER_INTERSECTION_PAIR,
 
-        arm_cmp
+        arm_cmp,
     )).id();
 
     commands.spawn_empty()
@@ -231,9 +231,16 @@ pub fn stickman_body_setup(
 
 }
 
-// TODO: Look for new StickmanArmSegment components and update their Collider user_data
-pub fn set_arm_uuids() {
-    
+pub fn set_arm_uuids(
+    mut rapier_context: ResMut<RapierContext>,
+    stickman_arm_segments: Query<(&StickmanArmSegment, &RapierRigidBodyHandle)>
+) {
+    for (arm_segment, rigid_body_handle) in stickman_arm_segments.iter() {
+        let body = rapier_context.bodies.get_mut(rigid_body_handle.0).unwrap();
+        body.user_data = unsafe {
+            std::mem::transmute::<Uuid, u128>(arm_segment.get_arm_uuid())
+        }
+    }
 }
 
 pub fn test_update(

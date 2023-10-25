@@ -25,12 +25,17 @@ impl StickmanBodyPart {
 
 //might add more onto this component
 #[derive(Component, Clone, Copy)]
-pub struct StickmanArmSegment (Uuid);
+pub struct StickmanArmSegment (pub(crate) Uuid);
 
 impl StickmanArmSegment {
     #[inline(always)]
     pub fn new(arm_uuid: Uuid) -> Self{
         Self(arm_uuid)
+    }
+
+    #[inline(always)]
+    pub fn get_arm_uuid(&self) -> Uuid {
+        self.0
     }
 }
 

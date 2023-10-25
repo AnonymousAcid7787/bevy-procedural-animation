@@ -14,7 +14,7 @@ use bevy_flycam::{NoCameraPlayerPlugin, FlyCam, MovementSettings};
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_rapier3d::{prelude::*, render::RapierDebugRenderPlugin, rapier::prelude::PhysicsHooks};
 use stickman::StickmanArmSegment;
-use systems::{stickman_body_setup, test_update};
+use systems::{stickman_body_setup, test_update, set_arm_uuids};
 
 
 mod utils;
@@ -50,6 +50,7 @@ fn main() {
             scene_setup
         ))
         .add_systems(Update, test_update)
+        .add_systems(PreUpdate, set_arm_uuids)
         .register_type::<TestComponent>();
     
     #[cfg(debug_assertions)]
