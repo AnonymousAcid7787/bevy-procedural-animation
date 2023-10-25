@@ -28,7 +28,7 @@ fn main() {
         DefaultPlugins.set(
             RenderPlugin {
                 wgpu_settings: WgpuSettings {
-                    // backends: Some(Backends::DX12),
+                    backends: Some(Backends::DX12),
                     power_preference: PowerPreference::HighPerformance,
                     ..Default::default()
                 }
@@ -69,7 +69,6 @@ pub struct StickmanFilters<'w, 's> {
 }
 
 impl BevyPhysicsHooks for StickmanFilters<'_, '_> {
-
     fn filter_contact_pair(&self, context: PairFilterContextView) -> Option<SolverFlags> {
         //stickman arm segment collisions
         if self.tags.contains(context.collider1()) && self.tags.contains(context.collider2()) {

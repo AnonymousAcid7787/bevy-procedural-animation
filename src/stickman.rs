@@ -25,18 +25,51 @@ impl StickmanBodyPart {
 
 //might add more onto this component
 #[derive(Component, Clone, Copy)]
-pub struct StickmanArmSegment (pub(crate) Uuid);
+pub struct StickmanArmSegment {
+    arm_uuid: Uuid,
+    segment_len: f32,
+    joint_gap: f32,
+}
 
 impl StickmanArmSegment {
     #[inline(always)]
-    pub fn new(arm_uuid: Uuid) -> Self{
-        Self(arm_uuid)
+    pub fn new(arm_uuid: Uuid, segment_len: f32, joint_gap: f32, radius: f32, motor_params: ArmMotorParams) -> Self {
+        
+
+        Self {
+            arm_uuid,
+            segment_len,
+            joint_gap,
+        }
     }
 
     #[inline(always)]
     pub fn get_arm_uuid(&self) -> Uuid {
-        self.0
+        self.arm_uuid
     }
+
+    #[inline(always)]
+    pub fn get_segment_len(&self) -> f32 {
+        self.segment_len
+    }
+
+    #[inline(always)]
+    pub fn get_joint_gap_len(&self) -> f32 {
+        self.joint_gap
+    }
+
+    #[inline(always)]
+    pub fn get_arm_len(&self) -> f32 {
+        self.segment_len + self.joint_gap
+    }
+
+}
+
+pub struct ArmMotorParams {
+    pub target_pos: f32,
+    pub target_vel: f32,
+    pub stiffness: f32,
+    pub damping: f32,
 }
 
 #[derive(Default, Bundle)]
