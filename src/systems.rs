@@ -1,6 +1,7 @@
-use bevy::prelude::*;
-use bevy_flycam::{MovementSettings, FlyCam};
+use bevy::{prelude::*, utils::Uuid};
 use bevy_rapier3d::{prelude::*, rapier::prelude::MotorModel};
+
+use crate::stickman::StickmanArmSegment;
 
 macro_rules! spawn_body_part {
     ($mesh:expr, $commands:expr, $material:expr, $transform:expr, $capsule_depth:expr, $radius:expr) => {
@@ -198,12 +199,16 @@ pub fn stickman_body_setup(
         .motor_model(MotorModel::ForceBased)
         ;
 
+    let arm_cmp = StickmanArmSegment::new(Uuid::new_v4());
+
     let par_entity = commands.spawn((
         SpatialBundle::default(),
         RigidBody::Fixed,
         Collider::capsule(Vec3::X * (-arm_segment_depth/2.), Vec3::X * (arm_segment_depth/2.), radius),
+        ActiveHooks::FILTER_INTERSECTION_PAIR,
+
+        arm_cmp
     )).id();
-    
 
     commands.spawn_empty()
         .set_parent(par_entity)
@@ -211,6 +216,7 @@ pub fn stickman_body_setup(
             RigidBody::Dynamic,
             MultibodyJoint::new(par_entity, joint),
             Collider::capsule(Vec3::Y * (-arm_segment_depth/2.), Vec3::Y * (arm_segment_depth/2.), radius),
+            ActiveHooks::FILTER_CONTACT_PAIRS,
 
             PbrBundle {
                 mesh: meshes.add(arm_segment.into()),
@@ -218,9 +224,16 @@ pub fn stickman_body_setup(
                 transform: Transform::from_xyz(arm_segment_len+joint_gap_size, 0., 0.),
                 ..Default::default()
             },
-            Sleeping::default()
+            Sleeping::default(),
+
+            arm_cmp,
         ));
 
+}
+
+// TODO: Look for new StickmanArmSegment components and update their Collider user_data
+pub fn set_arm_uuids() {
+    
 }
 
 pub fn test_update(

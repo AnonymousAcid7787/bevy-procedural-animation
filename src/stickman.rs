@@ -1,4 +1,4 @@
-use bevy::{prelude::{Component, Bundle, Visibility, ComputedVisibility}, transform::TransformBundle};
+use bevy::{prelude::{Component, Bundle, Visibility, ComputedVisibility}, transform::TransformBundle, utils::Uuid};
 
 #[derive(Component)]
 pub struct StickmanBody;
@@ -20,6 +20,17 @@ impl StickmanBodyPart {
     #[inline(always)]
     pub fn length(&self) -> f32 {
         self.depth + self.radius
+    }
+}
+
+//might add more onto this component
+#[derive(Component, Clone, Copy)]
+pub struct StickmanArmSegment (Uuid);
+
+impl StickmanArmSegment {
+    #[inline(always)]
+    pub fn new(arm_uuid: Uuid) -> Self{
+        Self(arm_uuid)
     }
 }
 

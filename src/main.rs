@@ -8,11 +8,12 @@ use bevy::{
         RenderPlugin, 
         settings::{WgpuSettings, Backends, PowerPreference}
     }, 
-    pbr::wireframe::WireframePlugin, reflect::{TypePath, TypeUuid}
+    pbr::wireframe::WireframePlugin, reflect::{TypePath, TypeUuid}, utils::Uuid, ecs::system::SystemParam
 };
 use bevy_flycam::{NoCameraPlayerPlugin, FlyCam, MovementSettings};
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_rapier3d::{prelude::*, render::RapierDebugRenderPlugin, rapier::prelude::PhysicsHooks};
+use stickman::StickmanArmSegment;
 use systems::{stickman_body_setup, test_update};
 
 
@@ -27,7 +28,7 @@ fn main() {
         DefaultPlugins.set(
             RenderPlugin {
                 wgpu_settings: WgpuSettings {
-                    backends: Some(Backends::DX12),
+                    // backends: Some(Backends::DX12),
                     power_preference: PowerPreference::HighPerformance,
                     ..Default::default()
                 }
@@ -42,7 +43,7 @@ fn main() {
             MaterialPlugin::<TestMaterial>::default(),
             NoCameraPlayerPlugin,
 
-            RapierPhysicsPlugin::<NoUserData>::default(),
+            RapierPhysicsPlugin::<StickmanFilters>::default(),
         ))
         .add_systems(Startup, ( 
             stickman_body_setup,
@@ -61,15 +62,30 @@ fn main() {
 
 }
 
-pub struct CustomPhysicsHooks {
-
+#[derive(SystemParam)]
+pub struct StickmanFilters<'w, 's> {
+    tags: Query<'w, 's, With<StickmanArmSegment>>,
 }
 
-impl PhysicsHooks for CustomPhysicsHooks {
-    fn filter_contact_pair(&self, context: &bevy_rapier3d::rapier::prelude::PairFilterContext) -> Option<SolverFlags> {
-        
+impl BevyPhysicsHooks for StickmanFilters<'_, '_> {
+
+    fn filter_contact_pair(&self, context: PairFilterContextView) -> Option<SolverFlags> {
+        //stickman arm segment collisions
+        if self.tags.contains(context.collider1()) && self.tags.contains(context.collider2()) {
+            let raw = context.raw;
+            let rigid_body1 = raw.bodies.get(raw.rigid_body1.unwrap()).unwrap();
+            let rigid_body2 = raw.bodies.get(raw.rigid_body2.unwrap()).unwrap();
+
+            //if they have the same uuid
+            if rigid_body1.user_data == rigid_body2.user_data {
+                return None;
+            }
+        }
+
+        return Some(SolverFlags::COMPUTE_IMPULSES);
     }
 }
+
 
 
 pub fn scene_setup(
