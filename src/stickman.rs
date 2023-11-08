@@ -1,4 +1,4 @@
-use bevy::{prelude::{Component, Bundle, Visibility, ComputedVisibility}, transform::TransformBundle, utils::Uuid};
+use bevy::{prelude::{Component, Bundle, Visibility, ComputedVisibility, Entity}, transform::TransformBundle, utils::Uuid};
 
 #[derive(Component)]
 pub struct StickmanBody;
@@ -24,52 +24,32 @@ impl StickmanBodyPart {
 }
 
 //might add more onto this component
-#[derive(Component, Clone, Copy)]
+#[derive(Component)]
 pub struct StickmanArmSegment {
     arm_uuid: Uuid,
-    segment_len: f32,
-    joint_gap: f32,
+    /// If this is not at the end of an arm's heirarchy, this would have a value containing the child arm.
+    /// This might become a Vec of entities later on, to support multiple arm segments attached to one upper arm.
+    lower_arm: Option<Entity>,
 }
 
 impl StickmanArmSegment {
     #[inline(always)]
-    pub fn new(arm_uuid: Uuid, segment_len: f32, joint_gap: f32, radius: f32, motor_params: ArmMotorParams) -> Self {
-        
-
+    pub fn new(arm_uuid: Uuid, lower_arm: Option<Entity>) -> Self {
         Self {
             arm_uuid,
-            segment_len,
-            joint_gap,
+            lower_arm
         }
     }
 
     #[inline(always)]
-    pub fn get_arm_uuid(&self) -> Uuid {
+    pub fn is_lowest_arm(&self) -> bool {
+        self.lower_arm.is_none()
+    }
+
+    #[inline(always)]
+    pub fn arm_uuid(&self) -> Uuid {
         self.arm_uuid
     }
-
-    #[inline(always)]
-    pub fn get_segment_len(&self) -> f32 {
-        self.segment_len
-    }
-
-    #[inline(always)]
-    pub fn get_joint_gap_len(&self) -> f32 {
-        self.joint_gap
-    }
-
-    #[inline(always)]
-    pub fn get_arm_len(&self) -> f32 {
-        self.segment_len + self.joint_gap
-    }
-
-}
-
-pub struct ArmMotorParams {
-    pub target_pos: f32,
-    pub target_vel: f32,
-    pub stiffness: f32,
-    pub damping: f32,
 }
 
 #[derive(Default, Bundle)]

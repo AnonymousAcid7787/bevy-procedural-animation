@@ -8,11 +8,11 @@ use bevy::{
         RenderPlugin, 
         settings::{WgpuSettings, Backends, PowerPreference}
     }, 
-    pbr::wireframe::WireframePlugin, reflect::{TypePath, TypeUuid}, utils::Uuid, ecs::system::SystemParam, transform::TransformSystem
+    pbr::wireframe::WireframePlugin, reflect::{TypePath, TypeUuid}, ecs::system::SystemParam
 };
 use bevy_flycam::{NoCameraPlayerPlugin, FlyCam, MovementSettings};
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
-use bevy_rapier3d::{prelude::*, render::RapierDebugRenderPlugin, rapier::prelude::PhysicsHooks};
+use bevy_rapier3d::{prelude::*, render::RapierDebugRenderPlugin};
 use stickman::StickmanArmSegment;
 use systems::{stickman_body_setup, test_update, set_arm_uuids};
 
