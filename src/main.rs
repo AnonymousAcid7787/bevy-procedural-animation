@@ -8,7 +8,7 @@ use bevy::{
         RenderPlugin, 
         settings::{WgpuSettings, Backends, PowerPreference}
     }, 
-    pbr::wireframe::WireframePlugin, reflect::{TypePath, TypeUuid}, utils::Uuid, ecs::system::SystemParam
+    pbr::wireframe::WireframePlugin, reflect::{TypePath, TypeUuid}, utils::Uuid, ecs::system::SystemParam, transform::TransformSystem
 };
 use bevy_flycam::{NoCameraPlayerPlugin, FlyCam, MovementSettings};
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
@@ -31,9 +31,10 @@ fn main() {
                     backends: Some(Backends::DX12),
                     power_preference: PowerPreference::HighPerformance,
                     ..Default::default()
-                }
+                },
             }
         );
+    
 
     app.add_plugins((
             default_plugins,
@@ -85,7 +86,6 @@ impl BevyPhysicsHooks for StickmanFilters<'_, '_> {
         return Some(SolverFlags::COMPUTE_IMPULSES);
     }
 }
-
 
 
 pub fn scene_setup(
