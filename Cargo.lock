@@ -353,6 +353,7 @@ dependencies = [
  "bevy_flycam",
  "bevy_rapier3d",
  "rayon",
+ "smallvec",
 ]
 
 [[package]]

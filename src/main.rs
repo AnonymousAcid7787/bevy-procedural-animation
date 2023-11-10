@@ -50,7 +50,10 @@ fn main() {
             stickman_body_setup,
             scene_setup
         ))
-        .add_systems(Update, test_update)
+        .add_systems(Update, (
+            test_update,
+            test_system,
+        ))
         .add_systems(PreUpdate, set_arm_uuids)
         .register_type::<TestComponent>();
     
@@ -62,6 +65,24 @@ fn main() {
 
     app.run();
 
+}
+
+pub fn test_system(
+    mut commands: Commands,
+    camera: Query<&Transform, With<FlyCam>>,
+    keys: Res<Input<KeyCode>>,
+) {
+    let cam_transform = camera.get_single().unwrap();
+    if keys.just_pressed(KeyCode::J) {
+        commands.spawn((
+            RigidBody::Dynamic,
+            Collider::cuboid(0.1, 0.1, 0.1),
+            SpatialBundle {
+                transform: Transform::from_xyz(cam_transform.translation.x, cam_transform.translation.y, cam_transform.translation.z),
+                ..Default::default()
+            }
+        ));
+    }
 }
 
 #[derive(SystemParam)]
@@ -86,7 +107,6 @@ impl BevyPhysicsHooks for StickmanFilters<'_, '_> {
         return Some(SolverFlags::COMPUTE_IMPULSES);
     }
 }
-
 
 pub fn scene_setup(
     mut commands: Commands,

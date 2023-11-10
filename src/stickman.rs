@@ -1,4 +1,6 @@
 use bevy::{prelude::{Component, Bundle, Visibility, ComputedVisibility, Entity}, transform::TransformBundle, utils::Uuid};
+use bevy_rapier3d::prelude::RapierMultibodyJointHandle;
+use smallvec::SmallVec;
 
 #[derive(Component)]
 pub struct StickmanBody;
@@ -57,4 +59,19 @@ pub struct StickmanMeshParentBundle {
     pub visiblity: Visibility,
     pub computed_visibility: ComputedVisibility,
     pub transform_bundle: TransformBundle,
+}
+
+//Stickman arm component (parent of both upper and lower arm(s))
+pub struct StickmanArm {
+    arm_segments: SmallVec<[Entity; 2]>,
+    arm_uuid: Uuid,
+    joints: SmallVec<[RapierMultibodyJointHandle; 2]>,
+}
+
+impl StickmanArm {
+    //maybe:
+    //  add a command for reaching for a specific point in space
+    //  command for rotating arm
+    //  a way to "grow" another arm segment
+    //  
 }
