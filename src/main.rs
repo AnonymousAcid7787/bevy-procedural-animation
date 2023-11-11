@@ -1,12 +1,10 @@
-
-
 use bevy::{
     prelude::{*}, 
     DefaultPlugins, 
     render::{
         render_resource::{PolygonMode, AsBindGroup}, 
         RenderPlugin, 
-        settings::{WgpuSettings, Backends, PowerPreference}
+        settings::{WgpuSettings, PowerPreference}
     }, 
     pbr::wireframe::WireframePlugin, reflect::{TypePath, TypeUuid}, ecs::system::SystemParam
 };
@@ -14,7 +12,7 @@ use bevy_flycam::{NoCameraPlayerPlugin, FlyCam, MovementSettings};
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_rapier3d::{prelude::*, render::RapierDebugRenderPlugin};
 use stickman::StickmanArmSegment;
-use systems::{stickman_body_setup, test_update, set_arm_uuids};
+use systems::{stickman_body_setup, test_update};
 
 
 mod utils;
@@ -28,7 +26,7 @@ fn main() {
         DefaultPlugins.set(
             RenderPlugin {
                 wgpu_settings: WgpuSettings {
-                    backends: Some(Backends::DX12),
+                    // backends: Some(Backends::DX12),
                     power_preference: PowerPreference::HighPerformance,
                     ..Default::default()
                 },
@@ -44,7 +42,7 @@ fn main() {
             MaterialPlugin::<TestMaterial>::default(),
             NoCameraPlayerPlugin,
 
-            RapierPhysicsPlugin::<StickmanFilters>::default(),
+            RapierPhysicsPlugin::<()>::default(),
         ))
         .add_systems(Startup, ( 
             stickman_body_setup,
@@ -54,7 +52,6 @@ fn main() {
             test_update,
             test_system,
         ))
-        .add_systems(PreUpdate, set_arm_uuids)
         .register_type::<TestComponent>();
     
     #[cfg(debug_assertions)]
@@ -85,28 +82,6 @@ pub fn test_system(
     }
 }
 
-#[derive(SystemParam)]
-pub struct StickmanFilters<'w, 's> {
-    tags: Query<'w, 's, With<StickmanArmSegment>>,
-}
-
-impl BevyPhysicsHooks for StickmanFilters<'_, '_> {
-    fn filter_contact_pair(&self, context: PairFilterContextView) -> Option<SolverFlags> {
-        //stickman arm segment collisions
-        if self.tags.contains(context.collider1()) && self.tags.contains(context.collider2()) {
-            let raw = context.raw;
-            let rigid_body1 = raw.bodies.get(raw.rigid_body1.unwrap()).unwrap();
-            let rigid_body2 = raw.bodies.get(raw.rigid_body2.unwrap()).unwrap();
-
-            //if they have the same uuid
-            if rigid_body1.user_data == rigid_body2.user_data {
-                return None;
-            }
-        }
-
-        return Some(SolverFlags::COMPUTE_IMPULSES);
-    }
-}
 
 pub fn scene_setup(
     mut commands: Commands,

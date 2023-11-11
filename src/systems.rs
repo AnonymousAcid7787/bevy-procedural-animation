@@ -1,5 +1,5 @@
-use bevy::{prelude::*, utils::Uuid};
-use bevy_rapier3d::{prelude::*, rapier::prelude::{JointAxis, JointLimits, MotorModel}};
+use bevy::prelude::*;
+use bevy_rapier3d::{prelude::*, rapier::prelude::{JointLimits, MotorModel}};
 
 use crate::stickman::StickmanArmSegment;
 
@@ -207,18 +207,18 @@ pub fn stickman_body_setup(
         let joint_offset = (arm_segment_len+joint_gap_size)/2.;
 
         //motor params
-        let target_pos = f32::to_radians(-90.);
+        let target_pos = f32::to_radians(0.);
         let target_vel = f32::to_radians(30.);
         let stiffness = 1.;
         let damping = 0.03;
         
-        let joint = 
+        let mut joint = 
             // GenericJointBuilder::new(JointAxesMask::LIN_AXES | JointAxesMask::ANG_X)
             // SphericalJointBuilder::new()
             RevoluteJointBuilder::new(Vec3::Z)
-                .local_anchor1(Vec3::new(joint_offset, 0., 0.))
-                .local_anchor2(Vec3::new(0., -joint_offset, 0.))
-                .limits([f32::to_radians(-90.), f32::to_radians(60.)])
+                .local_anchor1(Vec3::new(0., -joint_offset, 0.))
+                .local_anchor2(Vec3::new(0., joint_offset , -0.))
+                .limits([0., 150_f32.to_radians()])
                 // .limits(JointAxis::AngX, [0., 0.])
                 // .limits(JointAxis::AngY, [0., 270_f32.to_radians()])
                 // .limits(JointAxis::AngZ, [f32::to_radians(-90.), f32::to_radians(60.)])
@@ -227,14 +227,14 @@ pub fn stickman_body_setup(
                 //     0.,
                 //     target_vel,
                 //     stiffness,
-                //     0.
+                //     damping
                 // )
                 // .motor(
                 //     JointAxis::AngY,
                 //     0.,
                 //     target_vel,
                 //     stiffness,
-                //     0.
+                //     damping
                 // )
                 .motor(
                     // JointAxis::AngZ,
@@ -245,15 +245,23 @@ pub fn stickman_body_setup(
                 )
                 .motor_model(MotorModel::ForceBased)
                 // .motor_model(JointAxis::AngZ, MotorModel::ForceBased)
+                .build()
                 ;
+        joint.set_contacts_enabled(false);
 
-        let arm_uuid = Uuid::new_v4();
+        let arm_segment_mesh = meshes.add(arm_segment.into());
 
         let upper_arm = commands.spawn((
-            SpatialBundle::default(),
             RigidBody::Fixed,
-            Collider::capsule(Vec3::X * (-arm_segment_depth/2.), Vec3::X * (arm_segment_depth/2.), radius),
-            ActiveHooks::FILTER_CONTACT_PAIRS,
+            Collider::capsule(Vec3::Y * (-arm_segment_depth/2.), Vec3::Y * (arm_segment_depth/2.), radius),
+            PbrBundle {
+                mesh: arm_segment_mesh.clone(),
+                material: upper_arm_material,
+                transform: Transform::from_rotation(Quat::from_euler(EulerRot::XYZ, 0., 0., 90_f32.to_radians())),
+                ..Default::default()
+            },
+            Sleeping::default(),
+            // ActiveHooks::FILTER_CONTACT_PAIRS,
         )).id();
         
         let lower_arm = commands.spawn_empty()
@@ -262,36 +270,23 @@ pub fn stickman_body_setup(
                 RigidBody::Dynamic,
                 MultibodyJoint::new(upper_arm, joint),
                 Collider::capsule(Vec3::Y * (-arm_segment_depth/2.), Vec3::Y * (arm_segment_depth/2.), radius),
-                ActiveHooks::FILTER_CONTACT_PAIRS,
+                // ActiveHooks::FILTER_CONTACT_PAIRS,
 
                 PbrBundle {
-                    mesh: meshes.add(arm_segment.into()),
-                    material: standard_materials.add(Color::BLUE.into()),
+                    mesh: arm_segment_mesh,
+                    material: material,
                     transform: Transform::from_xyz(arm_segment_len+joint_gap_size, 0., 0.),
                     ..Default::default()
                 },
                 Sleeping::default(),
-                StickmanArmSegment::new(arm_uuid, None),
+                StickmanArmSegment::with_upper_arm(upper_arm),
             )).id();
         
         commands.get_entity(upper_arm).unwrap()
-            .insert(StickmanArmSegment::new(arm_uuid, Some(lower_arm)));
+            .insert(StickmanArmSegment::with_lower_arm(lower_arm));
         
     }
 
-}
-
-pub fn set_arm_uuids(
-    mut rapier_context: ResMut<RapierContext>,
-    stickman_arm_segments: Query<(&StickmanArmSegment, &RapierRigidBodyHandle)>
-) {
-    for (arm_segment, rigid_body_handle) in stickman_arm_segments.iter() {
-        let body = rapier_context.bodies.get_mut(rigid_body_handle.0).unwrap();
-        //SAFETY: Uuid has the same size as u128
-        body.user_data = unsafe {
-            std::mem::transmute::<Uuid, u128>(arm_segment.arm_uuid())
-        }
-    }
 }
 
 pub fn test_update(
@@ -303,75 +298,14 @@ pub fn test_update(
         else if keys.pressed(KeyCode::Down) { f32::to_radians(-5.) }
         else { f32::to_radians(0.) };
 
-    let dir2 = 
-    if keys.pressed(KeyCode::Right) { f32::to_radians(5.) }
-    else if keys.pressed(KeyCode::Left) { f32::to_radians(-5.) }
-    else { f32::to_radians(0.) };
-
     let default_limits = JointLimits::default();
 
     for (mut multibody_joint, mut sleeping) in multibody_joints.iter_mut() {
         let joint = &mut  multibody_joint.data;
         
-        //Z motor
-        if joint.motor(JointAxis::AngZ).is_some() {
-            let motor = joint.motor(JointAxis::AngZ).unwrap();
-            let target_vel = motor.target_vel;
-            let current_target_pos = motor.target_pos;
-            let stiffness = motor.stiffness;
-            let damping = motor.damping;
-            let limits = joint.limits(JointAxis::AngZ).unwrap_or(&default_limits);
-            
-            let new_target_pos = f32::clamp(
-                current_target_pos + dir,
-                limits.min * (1. + damping),
-                limits.max
-            );
-    
-            if dir != 0. {
-                sleeping.sleeping = false;
-            }
-            
-            joint.set_motor(
-                JointAxis::AngZ,
-                new_target_pos,
-                target_vel,
-                stiffness,
-                damping
-            );
-        }
-
-        //Y motor
-        if joint.motor(JointAxis::AngY).is_some() {
-            let motor = joint.motor(JointAxis::AngY).unwrap();
-            let target_vel = motor.target_vel;
-            let current_target_pos = motor.target_pos;
-            let stiffness = motor.stiffness;
-            let damping = motor.damping;
-            let limits = joint.limits(JointAxis::AngY).unwrap_or(&default_limits);
-            
-            let new_target_pos = f32::clamp(
-                current_target_pos + dir2,
-                limits.min * (1. + damping),
-                limits.max
-            );
-
-            if dir2 != 0. {
-                sleeping.sleeping = false;
-            }
-            
-            joint.set_motor(
-                JointAxis::AngY,
-                new_target_pos,
-                target_vel,
-                stiffness,
-                damping
-            );
-        }
-
         //revolute joint
         if joint.as_revolute().is_some() {
-            let joint = joint.as_revolute_mut().unwrap();
+            let joint = unsafe { joint.as_revolute_mut().unwrap_unchecked() };
             let motor = joint.motor().unwrap();
             let target_vel = motor.target_vel;
             let current_target_pos = motor.target_pos;

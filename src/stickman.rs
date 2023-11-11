@@ -1,45 +1,41 @@
-use bevy::{prelude::{Component, Bundle, Visibility, ComputedVisibility, Entity}, transform::TransformBundle, utils::Uuid};
+use bevy::{prelude::*, transform::TransformBundle};
 use bevy_rapier3d::prelude::RapierMultibodyJointHandle;
 use smallvec::SmallVec;
 
-#[derive(Component)]
-pub struct StickmanBody;
 
-#[derive(Component)]
-pub struct StickmanBodyPart {
-    /// Radius of capsule
-    pub radius: f32,
-    /// Depth of capsule
-    pub depth: f32,
-}
+pub struct StickmanPlugin;
 
-impl StickmanBodyPart {
-    #[inline(always)]
-    pub fn new(radius: f32, depth: f32) -> Self {
-        Self { radius, depth }
-    }
-
-    #[inline(always)]
-    pub fn length(&self) -> f32 {
-        self.depth + self.radius
+impl Plugin for StickmanPlugin {
+    fn build(&self, app: &mut App) {
+        
     }
 }
 
 //might add more onto this component
 #[derive(Component)]
 pub struct StickmanArmSegment {
-    arm_uuid: Uuid,
-    /// If this is not at the end of an arm's heirarchy, this would have a value containing the child arm.
-    /// This might become a Vec of entities later on, to support multiple arm segments attached to one upper arm.
+    /// The arm segment above this one in the arm heirarchy
+    upper_arm: Option<Entity>,
+    /// The arm segment below this one in the arm heirarchy
     lower_arm: Option<Entity>,
 }
 
 impl StickmanArmSegment {
     #[inline(always)]
-    pub fn new(arm_uuid: Uuid, lower_arm: Option<Entity>) -> Self {
+    pub fn with_upper_arm(upper_arm: Entity) -> Self {
+        Self::new(Some(upper_arm), None)
+    }
+
+    #[inline(always)]
+    pub fn with_lower_arm(lower_arm: Entity) -> Self {
+        Self::new(None, Some(lower_arm))
+    }
+
+    #[inline(always)]
+    pub fn new(upper_arm: Option<Entity>, lower_arm: Option<Entity>) -> Self {
         Self {
-            arm_uuid,
-            lower_arm
+            lower_arm,
+            upper_arm
         }
     }
 
@@ -49,8 +45,8 @@ impl StickmanArmSegment {
     }
 
     #[inline(always)]
-    pub fn arm_uuid(&self) -> Uuid {
-        self.arm_uuid
+    pub fn is_highest_arm(&self) -> bool {
+        self.upper_arm.is_none()
     }
 }
 
@@ -61,10 +57,15 @@ pub struct StickmanMeshParentBundle {
     pub transform_bundle: TransformBundle,
 }
 
+#[derive(Component)]
+pub struct StickmanBody {
+    left_arm: StickmanArm,
+    right_arm: StickmanArm,
+}
+
 //Stickman arm component (parent of both upper and lower arm(s))
 pub struct StickmanArm {
     arm_segments: SmallVec<[Entity; 2]>,
-    arm_uuid: Uuid,
     joints: SmallVec<[RapierMultibodyJointHandle; 2]>,
 }
 
