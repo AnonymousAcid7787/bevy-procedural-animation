@@ -4,15 +4,14 @@ use bevy::{
     render::{
         render_resource::{PolygonMode, AsBindGroup}, 
         RenderPlugin, 
-        settings::{WgpuSettings, PowerPreference}
+        settings::{WgpuSettings, PowerPreference, Backends}
     }, 
     pbr::wireframe::WireframePlugin, reflect::{TypePath, TypeUuid}, ecs::system::SystemParam
 };
 use bevy_flycam::{NoCameraPlayerPlugin, FlyCam, MovementSettings};
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_rapier3d::{prelude::*, render::RapierDebugRenderPlugin};
-use stickman::StickmanArmSegment;
-use systems::{stickman_body_setup, test_update};
+use systems::{stickman_body_setup, test_update, update_joint_handles};
 
 
 mod utils;
@@ -26,7 +25,7 @@ fn main() {
         DefaultPlugins.set(
             RenderPlugin {
                 wgpu_settings: WgpuSettings {
-                    // backends: Some(Backends::DX12),
+                    backends: Some(Backends::DX12),
                     power_preference: PowerPreference::HighPerformance,
                     ..Default::default()
                 },
@@ -52,6 +51,7 @@ fn main() {
             test_update,
             test_system,
         ))
+        .add_systems(PostUpdate, update_joint_handles.after(PhysicsSet::Writeback))
         .register_type::<TestComponent>();
     
     #[cfg(debug_assertions)]

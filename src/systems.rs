@@ -1,7 +1,8 @@
 use bevy::prelude::*;
-use bevy_rapier3d::{prelude::*, rapier::prelude::{JointLimits, MotorModel}};
+use bevy_rapier3d::{prelude::*, rapier::prelude::{JointLimits, MotorModel, MultibodyJointHandle}};
+use smallvec::SmallVec;
 
-use crate::stickman::StickmanArmSegment;
+use crate::{stickman::{StickmanArmSegment, StickmanArm}, TestComponent};
 
 macro_rules! spawn_body_part {
     ($mesh:expr, $commands:expr, $material:expr, $transform:expr, $capsule_depth:expr, $radius:expr) => {
@@ -270,7 +271,6 @@ pub fn stickman_body_setup(
                 RigidBody::Dynamic,
                 MultibodyJoint::new(upper_arm, joint),
                 Collider::capsule(Vec3::Y * (-arm_segment_depth/2.), Vec3::Y * (arm_segment_depth/2.), radius),
-                // ActiveHooks::FILTER_CONTACT_PAIRS,
 
                 PbrBundle {
                     mesh: arm_segment_mesh,
@@ -284,7 +284,10 @@ pub fn stickman_body_setup(
         
         commands.get_entity(upper_arm).unwrap()
             .insert(StickmanArmSegment::with_lower_arm(lower_arm));
-        
+
+        commands.spawn(
+            StickmanArm::new(SmallVec::from([lower_arm, upper_arm]))
+        );
     }
 
 }
@@ -333,4 +336,21 @@ pub fn test_update(
 
     }
 
-}  
+}
+
+pub fn update_joint_handles(
+    mut arms: Query<&mut StickmanArm, Changed<StickmanArm>>,
+    joint_handles: Query<&RapierMultibodyJointHandle>,
+) {
+    for mut arm in arms.iter_mut() {
+        arm.joints.clear();
+
+        for i in 0..arm.arm_segments.len() {
+            let segment = arm.arm_segments[i];
+            if let Ok(handle) = joint_handles.get(segment) {
+                arm.joints.push(handle.clone());
+            }
+        }
+
+    }
+}
