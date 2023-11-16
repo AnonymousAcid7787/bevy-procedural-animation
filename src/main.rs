@@ -38,7 +38,6 @@ fn main() {
             WireframePlugin::default(),
             WorldInspectorPlugin::default(),
             // LogFramesPlugin::default(),
-            MaterialPlugin::<TestMaterial>::default(),
             NoCameraPlayerPlugin,
 
             RapierPhysicsPlugin::<()>::default(),
@@ -117,36 +116,4 @@ pub fn scene_setup(
 #[derive(Component, Reflect)]
 pub struct TestComponent {
     
-}
-
-// This is the struct that will be passed to your shader
-#[derive(TypePath, AsBindGroup, Debug, Clone, TypeUuid)]
-#[uuid = "893a605b-ebb3-4dc1-8eb0-0b788a4bc91d"]
-pub struct TestMaterial {
-    #[uniform(0)]
-    color: Color,
-    #[texture(1)]
-    #[sampler(2)]
-    color_texture: Option<Handle<Image>>,
-    alpha_mode: AlphaMode,
-}
-
-impl Material for TestMaterial {
-    fn fragment_shader() -> bevy::render::render_resource::ShaderRef {
-        "shaders/test_material.wgsl".into()
-    }
-
-    fn alpha_mode(&self) -> AlphaMode {
-        self.alpha_mode
-    }
-
-    fn specialize(
-            _: &bevy::pbr::MaterialPipeline<Self>,
-            descriptor: &mut bevy::render::render_resource::RenderPipelineDescriptor,
-            _: &bevy::render::mesh::MeshVertexBufferLayout,
-            _: bevy::pbr::MaterialPipelineKey<Self>,
-        ) -> Result<(), bevy::render::render_resource::SpecializedMeshPipelineError> {
-        descriptor.primitive.polygon_mode = PolygonMode::Line;
-        return Ok(());
-    }
 }
