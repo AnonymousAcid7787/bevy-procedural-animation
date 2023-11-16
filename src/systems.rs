@@ -286,7 +286,7 @@ pub fn stickman_body_setup(
             .insert(StickmanArmSegment::with_lower_arm(lower_arm));
 
         commands.spawn(
-            StickmanArm::new(SmallVec::from([lower_arm, upper_arm]))
+            StickmanArm::new(SmallVec::from([upper_arm, lower_arm]))
         );
     }
 
@@ -300,6 +300,7 @@ pub fn test_update(
         if keys.pressed(KeyCode::Up) { f32::to_radians(5.) }
         else if keys.pressed(KeyCode::Down) { f32::to_radians(-5.) }
         else { f32::to_radians(0.) };
+        
 
     let default_limits = JointLimits::default();
 

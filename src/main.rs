@@ -6,7 +6,7 @@ use bevy::{
         RenderPlugin, 
         settings::{WgpuSettings, PowerPreference, Backends}
     }, 
-    pbr::wireframe::WireframePlugin, reflect::{TypePath, TypeUuid}, ecs::system::SystemParam
+    pbr::wireframe::WireframePlugin, reflect::{TypePath, TypeUuid}
 };
 use bevy_flycam::{NoCameraPlayerPlugin, FlyCam, MovementSettings};
 use bevy_inspector_egui::quick::WorldInspectorPlugin;

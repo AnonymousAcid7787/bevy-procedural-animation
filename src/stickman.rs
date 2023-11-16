@@ -41,7 +41,6 @@ impl StickmanArmSegment {
     }
 }
 
-
 #[derive(Component)]
 pub struct StickmanBody {
     left_arm: StickmanArm,
