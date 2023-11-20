@@ -1,8 +1,8 @@
 use bevy::prelude::*;
-use bevy_rapier3d::{prelude::*, rapier::prelude::{JointLimits, MotorModel, MultibodyJointHandle}};
+use bevy_rapier3d::{prelude::*, rapier::prelude::{JointLimits, MotorModel}};
 use smallvec::SmallVec;
 
-use crate::{stickman::{StickmanArmSegment, StickmanArm}, TestComponent};
+use crate::stickman::{StickmanArmSegment, StickmanArm, ArmMotorParams, SegmentInfo};
 
 macro_rules! spawn_body_part {
     ($mesh:expr, $commands:expr, $material:expr, $transform:expr, $capsule_depth:expr, $radius:expr) => {
@@ -53,6 +53,12 @@ pub fn stickman_body_setup(
     let longitudes = 16;
     let arm_segment_depth = arm_depth/2.;
     let arm_segment_len = arm_segment_depth+radius;
+
+    //motor params
+    let target_pos = f32::to_radians(0.);
+    let target_vel = f32::to_radians(30.);
+    let stiffness = 1.;
+    let damping = 0.03;
 
     let arm_segment = shape::Capsule {
         depth: arm_segment_depth,
@@ -114,181 +120,75 @@ pub fn stickman_body_setup(
         //         radius
         //     ),
         // ));
-
-        //older code
-        {
-            // //transforms
-            // let mut arm1_transform = Transform::from_xyz(0., 0., 0.);
-            //     arm1_transform.rotate_around(
-            //         Vec3::new(0., arm_len/2., 0.), 
-            //         Quat::from_axis_angle(Vec3::Z, 45_f32.to_radians())
-            //     );
-            
-            // let mut arm2_transform = Transform::from_xyz(0., 0., 0.);
-            //     arm2_transform.rotate_around(
-            //         Vec3::new(0., arm_len/2., 0.), 
-            //         Quat::from_axis_angle(Vec3::Z, -45_f32.to_radians())
-            //     );
-
-            // let torso_transform = Transform::from_xyz(0., 0., 0.);
-
-            // let mut leg1_transform = Transform::from_xyz(0., -torso_len - (leg_len - torso_len)/2., 0.);
-            //     leg1_transform.rotate_around(
-            //         Vec3::new(0., -torso_len/2., 0.), 
-            //         Quat::from_axis_angle(Vec3::Z, 30_f32.to_radians())
-            //     );
-            // let mut leg2_transform = Transform::from_xyz(0., -torso_len - (leg_len - torso_len)/2., 0.);
-            //     leg2_transform.rotate_around(
-            //         Vec3::new(0., -torso_len/2., 0.), 
-            //         Quat::from_axis_angle(Vec3::Z, -30_f32.to_radians())
-            //     );
-            
-            // //spawning entities
-            // let body_mesh_entity = commands.spawn((
-            //     SpatialBundle::default(),
-            //     StickmanBody
-            // )).id();
-            // let arm1_entity = spawn_body_part!(
-            //     meshes.add(arm.into()),
-            //     commands, 
-            //     material.clone(),
-            //     arm1_transform,
-            //     arm_depth,
-            //     radius
-            // );
-
-            // let arm2_entity = spawn_body_part!(
-            //     meshes.add(arm.into()),
-            //     commands, 
-            //     material.clone(),
-            //     arm2_transform,
-            //     arm_depth,
-            //     radius
-            // );
-        
-            // let torso_entity = spawn_body_part!(
-            //     meshes.add(torso.into()), 
-            //     commands, 
-            //     material.clone(),
-            //     torso_transform,
-            //     torso_depth,
-            //     radius
-            // );
-        
-            // let leg1_entity = spawn_body_part!(
-            //     meshes.add(leg.into()), 
-            //     commands, 
-            //     material.clone(),
-            //     leg1_transform,
-            //     leg_depth,
-            //     radius
-            // );
-            // let leg2_entity = spawn_body_part!(
-            //     meshes.add(leg.into()), 
-            //     commands, 
-            //     material.clone(),
-            //     leg2_transform,
-            //     leg_depth,
-            //     radius
-            // );
-
-            // //parent heirarchy stuff
-            // add_child!(commands, body_mesh_entity, torso_entity);
-            // add_child!(commands, body_mesh_entity, arm1_entity);
-            // add_child!(commands, body_mesh_entity, arm2_entity);
-            // add_child!(commands, body_mesh_entity, leg1_entity);
-            // add_child!(commands, body_mesh_entity, leg2_entity);
-        }
     }
-
     
-    //joints
-    {
-        let joint_gap_size = 0.;
-        let joint_offset = (arm_segment_len+joint_gap_size)/2.;
+    let left_arm_cmp = StickmanArm::make_arm(
+        SegmentInfo {
+            length: arm_segment_len,
+            thickness: radius,
+        },
+        SegmentInfo {
+            length: arm_segment_len,
+            thickness: radius,
+        }, 
+        ArmMotorParams {
+            joint_axis: None,
+            target_pos,
+            target_vel,
+            stiffness,
+            damping,
+        },
+        &mut commands
+    );
+    let right_arm_cmp = StickmanArm::make_arm(
+        SegmentInfo {
+            length: arm_segment_len,
+            thickness: radius,
+        },
+        SegmentInfo {
+            length: arm_segment_len,
+            thickness: radius,
+        }, 
+        ArmMotorParams {
+            joint_axis: None,
+            target_pos,
+            target_vel,
+            stiffness,
+            damping,
+        },
+        &mut commands
+    );
 
-        //motor params
-        let target_pos = f32::to_radians(0.);
-        let target_vel = f32::to_radians(30.);
-        let stiffness = 1.;
-        let damping = 0.03;
-        
-        let mut joint = 
-            // GenericJointBuilder::new(JointAxesMask::LIN_AXES | JointAxesMask::ANG_X)
-            // SphericalJointBuilder::new()
-            RevoluteJointBuilder::new(Vec3::Z)
-                .local_anchor1(Vec3::new(0., -joint_offset, 0.))
-                .local_anchor2(Vec3::new(0., joint_offset , -0.))
-                .limits([0., 150_f32.to_radians()])
-                // .limits(JointAxis::AngX, [0., 0.])
-                // .limits(JointAxis::AngY, [0., 270_f32.to_radians()])
-                // .limits(JointAxis::AngZ, [f32::to_radians(-90.), f32::to_radians(60.)])
-                // .motor(
-                //     JointAxis::AngX,
-                //     0.,
-                //     target_vel,
-                //     stiffness,
-                //     damping
-                // )
-                // .motor(
-                //     JointAxis::AngY,
-                //     0.,
-                //     target_vel,
-                //     stiffness,
-                //     damping
-                // )
-                .motor(
-                    // JointAxis::AngZ,
-                    target_pos,
-                    target_vel,
-                    stiffness,
-                    damping
-                )
-                .motor_model(MotorModel::ForceBased)
-                // .motor_model(JointAxis::AngZ, MotorModel::ForceBased)
-                .build()
-                ;
-        joint.set_contacts_enabled(false);
+    let left_arm = commands.spawn(left_arm_cmp.clone());
+    let right_arm = commands.spawn(right_arm_cmp.clone());
 
-        let arm_segment_mesh = meshes.add(arm_segment.into());
+    let half_torso_depth = torso_depth/2.;
+    let torso = commands.spawn((
+        RigidBody::Fixed,
+        Collider::capsule(Vec3::Y * -half_torso_depth, Vec3::Y * half_torso_depth, radius),
+        Sleeping::default()
+    )).id();
 
-        let upper_arm = commands.spawn((
-            RigidBody::Fixed,
-            Collider::capsule(Vec3::Y * (-arm_segment_depth/2.), Vec3::Y * (arm_segment_depth/2.), radius),
-            PbrBundle {
-                mesh: arm_segment_mesh.clone(),
-                material: upper_arm_material,
-                transform: Transform::from_rotation(Quat::from_euler(EulerRot::XYZ, 0., 0., 90_f32.to_radians())),
-                ..Default::default()
-            },
-            Sleeping::default(),
-            // ActiveHooks::FILTER_CONTACT_PAIRS,
-        )).id();
-        
-        let lower_arm = commands.spawn_empty()
-            .set_parent(upper_arm)
-            .insert((
-                RigidBody::Dynamic,
-                MultibodyJoint::new(upper_arm, joint),
-                Collider::capsule(Vec3::Y * (-arm_segment_depth/2.), Vec3::Y * (arm_segment_depth/2.), radius),
+    let mut left_shoulder = SphericalJointBuilder::new()
+        .local_anchor1(Vec3::new(radius/2., torso_len/2., 0.))
+        .local_anchor2(Vec3::Y * (arm_segment_len/2.))
+        .build();
+    left_shoulder.set_contacts_enabled(false);
 
-                PbrBundle {
-                    mesh: arm_segment_mesh,
-                    material: material,
-                    transform: Transform::from_xyz(arm_segment_len+joint_gap_size, 0., 0.),
-                    ..Default::default()
-                },
-                Sleeping::default(),
-                StickmanArmSegment::with_upper_arm(upper_arm),
-            )).id();
-        
-        commands.get_entity(upper_arm).unwrap()
-            .insert(StickmanArmSegment::with_lower_arm(lower_arm));
+    let mut right_shoulder = SphericalJointBuilder::new()
+        .local_anchor1(Vec3::new(-radius/2., torso_len/2., 0.))
+        .local_anchor2(Vec3::Y * (arm_segment_len/2.))
+        .build();
+    right_shoulder.set_contacts_enabled(false);
+    
 
-        commands.spawn(
-            StickmanArm::new(SmallVec::from([upper_arm, lower_arm]))
-        );
-    }
+    let mut upper_left_arm = commands.get_entity(left_arm_cmp.arm_segments[0]).unwrap();
+    upper_left_arm.set_parent(torso)
+        .insert(ImpulseJoint::new(torso, left_shoulder));
+    
+    let mut upper_right_arm = commands.get_entity(right_arm_cmp.arm_segments[0]).unwrap();
+    upper_right_arm.set_parent(torso)
+        .insert(ImpulseJoint::new(torso, right_shoulder));
 
 }
 
