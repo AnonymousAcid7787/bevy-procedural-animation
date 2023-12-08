@@ -75,3 +75,10 @@ fn frame_diagnostics_system (
         diagnostics.frames = 0;
     }
 }
+
+
+pub unsafe fn immutable_ref_to_mutable<T>(reference: &T) -> &mut T {
+    let const_ptr = reference as *const T;
+    let mut_ptr = const_ptr as *mut T;
+    return &mut *mut_ptr;
+}

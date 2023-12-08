@@ -2,7 +2,7 @@ use bevy::prelude::*;
 use bevy_rapier3d::{prelude::*, rapier::prelude::{JointLimits, MotorModel}};
 use smallvec::SmallVec;
 
-use crate::stickman::{StickmanArmSegment, StickmanArm, ArmMotorParams, SegmentInfo};
+use crate::stickman::{ArmSegment, StickmanArm, MotorParams, SegmentInfo};
 
 macro_rules! spawn_body_part {
     ($mesh:expr, $commands:expr, $material:expr, $transform:expr, $capsule_depth:expr, $radius:expr) => {
@@ -59,6 +59,20 @@ pub fn stickman_body_setup(
     let target_vel = f32::to_radians(30.);
     let stiffness = 1.;
     let damping = 0.03;
+
+    let left_arm = StickmanArm::make_arm_unjointed(
+        vec![
+            SegmentInfo {
+                length: arm_segment_len,
+                thickness: radius,
+            },
+            SegmentInfo {
+                length: arm_segment_len,
+                thickness: radius,
+            }, 
+        ],
+        &mut commands,
+    );
 
     let arm_segment = shape::Capsule {
         depth: arm_segment_depth,
@@ -122,6 +136,15 @@ pub fn stickman_body_setup(
         // ));
     }
     
+    
+    let arm_shape = shape::Capsule {
+        radius,
+        depth: arm_depth,
+        latitudes,
+        longitudes,
+        ..Default::default()
+    };
+
     let left_arm_cmp = StickmanArm::make_arm(
         SegmentInfo {
             length: arm_segment_len,
@@ -131,7 +154,7 @@ pub fn stickman_body_setup(
             length: arm_segment_len,
             thickness: radius,
         }, 
-        ArmMotorParams {
+        MotorParams {
             joint_axis: None,
             target_pos,
             target_vel,
@@ -149,7 +172,7 @@ pub fn stickman_body_setup(
             length: arm_segment_len,
             thickness: radius,
         }, 
-        ArmMotorParams {
+        MotorParams {
             joint_axis: None,
             target_pos,
             target_vel,
@@ -159,14 +182,22 @@ pub fn stickman_body_setup(
         &mut commands
     );
 
-    let left_arm = commands.spawn(left_arm_cmp.clone());
-    let right_arm = commands.spawn(right_arm_cmp.clone());
+    let left_arm = commands.spawn((
+        left_arm_cmp.clone(),
+        SpatialBundle::default(),
+    ));
+    let right_arm = commands.spawn((
+        right_arm_cmp.clone(),
+        SpatialBundle::default(),
+    ));
 
     let half_torso_depth = torso_depth/2.;
     let torso = commands.spawn((
         RigidBody::Fixed,
         Collider::capsule(Vec3::Y * -half_torso_depth, Vec3::Y * half_torso_depth, radius),
-        Sleeping::default()
+        Sleeping::default(),
+        Name::new("Torso"),
+        SpatialBundle::default(),
     )).id();
 
     let mut left_shoulder = SphericalJointBuilder::new()
@@ -184,7 +215,14 @@ pub fn stickman_body_setup(
 
     let mut upper_left_arm = commands.get_entity(left_arm_cmp.arm_segments[0]).unwrap();
     upper_left_arm.set_parent(torso)
-        .insert(ImpulseJoint::new(torso, left_shoulder));
+        .insert((
+            ImpulseJoint::new(torso, left_shoulder),
+            PbrBundle {
+                material: material.clone(),
+                mesh: meshes.add(arm_shape.into()),
+                ..Default::default()
+            }
+        ));
     
     let mut upper_right_arm = commands.get_entity(right_arm_cmp.arm_segments[0]).unwrap();
     upper_right_arm.set_parent(torso)
@@ -193,8 +231,9 @@ pub fn stickman_body_setup(
 }
 
 pub fn test_update(
-    mut multibody_joints: Query<(&mut MultibodyJoint, &mut Sleeping), With<StickmanArmSegment>>,
+    mut multibody_joints: Query<(Entity, &mut MultibodyJoint, &mut Sleeping), With<ArmSegment>>,
     keys: Res<Input<KeyCode>>,
+    mut commands: Commands,
 ) {
     let dir = 
         if keys.pressed(KeyCode::Up) { f32::to_radians(5.) }
@@ -204,7 +243,7 @@ pub fn test_update(
 
     let default_limits = JointLimits::default();
 
-    for (mut multibody_joint, mut sleeping) in multibody_joints.iter_mut() {
+    for (ent, mut multibody_joint, mut sleeping) in multibody_joints.iter_mut() {
         let joint = &mut  multibody_joint.data;
         
         //revolute joint

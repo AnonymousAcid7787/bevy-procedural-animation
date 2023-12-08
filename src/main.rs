@@ -10,7 +10,6 @@ use bevy::{
 use bevy_flycam::{NoCameraPlayerPlugin, FlyCam, MovementSettings};
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_rapier3d::{prelude::*, render::RapierDebugRenderPlugin};
-use stickman::{StickmanArm, SegmentInfo, ArmMotorParams};
 use systems::{stickman_body_setup, test_update, update_joint_handles};
 
 
