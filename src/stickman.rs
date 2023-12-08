@@ -1,9 +1,9 @@
-use bevy::{prelude::*, ecs::system::Command, utils::HashMap};
+use bevy::{prelude::*, ecs::system::Command};
 use bevy_rapier3d::{
     prelude::RapierMultibodyJointHandle,
     dynamics::{RevoluteJointBuilder, RigidBody, Sleeping, MultibodyJoint, GenericJoint},
-    rapier::dynamics::{JointAxis, MotorModel, MultibodyJointHandle},
-    geometry::Collider, plugin::{RapierContext, systems::init_joints}
+    rapier::dynamics::{JointAxis, MotorModel},
+    geometry::Collider, plugin::RapierContext
 };
 use smallvec::SmallVec;
 
@@ -81,6 +81,8 @@ impl StickmanArm {
         commands: &mut Commands
     ) -> Self {
         let mut arm_segments: SmallVec<[Entity; 2]> = SmallVec::with_capacity(segments.len());
+        arm_segments.push(commands.spawn_empty().id());
+        arm_segments.push(commands.spawn_empty().id());
 
         // creating segment entities with their physics components attached.
         for i in 0..segments.len() {
@@ -97,7 +99,7 @@ impl StickmanArm {
         // attaching ArmSegment components to the created entities
         for i in 0..arm_segments.len() {
             let lower_arm = if i+1 < arm_segments.len() { Some(arm_segments[i+1]) } else { None };
-            let upper_arm = if i-1 >= 0 { Some(arm_segments[i-1]) } else { None };
+            let upper_arm = if i > 0 { Some(arm_segments[i-1]) } else { None };
 
             commands.get_entity(arm_segments[i]).unwrap().
                 insert(ArmSegment {
@@ -273,7 +275,6 @@ impl Command for SpawnArm {
                         Sleeping::default(),
                     ));
                 }
-                let half_lower_depth = (lower_arm_info.length - lower_arm_info.thickness*2.)/2.;
             }
 
         }
@@ -287,6 +288,17 @@ impl Command for SpawnArm {
                 .unwrap()
                 .clone();
 
+            {//creating colliders if the segment doesn't have colliders
+                if !lower_arm.contains::<Collider>() {
+                    let half_lower_depth = (lower_arm_info.length - lower_arm_info.thickness*2.)/2.;
+                    
+                    lower_arm.insert((
+                        Collider::capsule(Vec3::Y * -half_lower_depth, Vec3::Y * half_lower_depth, lower_arm_info.thickness),
+                        Sleeping::default(),
+                    ));
+                }
+            }
+
             {//setting rapier joint handle
                 let mut context = world.resource_mut::<RapierContext>();
                 let context = &mut *context;
@@ -296,6 +308,7 @@ impl Command for SpawnArm {
                 let target = entity2body.get(&self.lower_arm);
                 let source = entity2body.get(&self.upper_arm);
 
+                // connecting the arm segments with the joint (stolen from init_joints in bevy_rapier3d)
                 if let (Some(target), Some(source)) = (target, source) {
                     if let Some(handle) = context.multibody_joints.insert(
                         *source,
@@ -315,7 +328,6 @@ impl Command for SpawnArm {
                     }
                 }
             }
-            
         }
     }
 }
