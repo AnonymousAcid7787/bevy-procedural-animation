@@ -24,7 +24,7 @@ fn main() {
         DefaultPlugins.set(
             RenderPlugin {
                 wgpu_settings: WgpuSettings {
-                    // backends: Some(Backends::DX12),
+                    backends: Some(Backends::DX12),
                     power_preference: PowerPreference::HighPerformance,
                     ..Default::default()
                 },

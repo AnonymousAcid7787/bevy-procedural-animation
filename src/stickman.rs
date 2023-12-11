@@ -263,8 +263,8 @@ impl Command for SpawnArm {
 
             let upper_arm_info = upper_arm
                 .get::<SegmentInfo>()
-                .unwrap()
-                .clone();
+                .unwrap();
+                // .clone();
 
             {//creating colliders if the segment doesn't have colliders
                 if !upper_arm.contains::<Collider>() {
