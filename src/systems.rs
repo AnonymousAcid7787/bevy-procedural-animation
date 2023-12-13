@@ -1,8 +1,8 @@
 use bevy::prelude::*;
-use bevy_rapier3d::{prelude::*, rapier::prelude::{JointLimits, MotorModel}};
+use bevy_rapier3d::{prelude::*, rapier::{prelude::{JointLimits, MotorModel}, dynamics::JointAxis}};
 use smallvec::SmallVec;
 
-use crate::stickman::{ArmSegment, StickmanArm, MotorParams, SegmentInfo};
+use crate::stickman::{ArmSegment, StickmanArm, MotorParams, SegmentInfo, StickmanCommandsExt};
 
 macro_rules! spawn_body_part {
     ($mesh:expr, $commands:expr, $material:expr, $transform:expr, $capsule_depth:expr, $radius:expr) => {
@@ -60,13 +60,37 @@ pub fn stickman_body_setup(
     let stiffness = 1.;
     let damping = 0.03;
 
+    let upper_arm = commands.spawn((
+        SegmentInfo {
+            length: arm_len,
+            thickness: radius
+        },
+        RigidBody::Fixed,
+    ))
+    .id();
+
+    let lower_arm = commands.spawn((
+        SegmentInfo {
+            length: arm_len,
+            thickness: radius
+        },
+        RigidBody::Dynamic,
+    ))
+    .id();
     
+    let mut joint = RevoluteJointBuilder::new(Vec3::Z)
+        .limits([0., 150_f32.to_radians()])
+        .motor(target_pos, target_vel, stiffness, damping)
+        .motor_model(MotorModel::ForceBased)
+        .build();
+    joint.set_contacts_enabled(false);
+    
+    commands.spawn_arm(upper_arm, lower_arm, joint);
 }
 
 pub fn test_update(
-    mut multibody_joints: Query<(Entity, &mut MultibodyJoint, &mut Sleeping), With<ArmSegment>>,
+    mut multibody_joints: Query<(Entity, &mut MultibodyJoint, &mut Sleeping)>,
     keys: Res<Input<KeyCode>>,
-    mut commands: Commands,
 ) {
     let dir = 
         if keys.pressed(KeyCode::Up) { f32::to_radians(5.) }
