@@ -149,7 +149,6 @@ impl StickmanArm {
             let upper_segment = self.arm_segments[i-1];
             let mut joint = joint_into.clone();
 
-            // joint.set_local_anchor1(Vec3::Y * )
             commands.get_entity(self.arm_segments[i]).unwrap()
                 .insert(MultibodyJoint::new(self.arm_segments[i-1], joint_into));
         }
@@ -291,15 +290,14 @@ impl Command for SpawnArm {
                 .unwrap();
             upper_len = upper_arm_info.length;
 
-            {//creating colliders if the segment doesn't have colliders
-                if !upper_arm.contains::<Collider>() {
-                    let half_upper_depth = (upper_arm_info.length - upper_arm_info.thickness*2.)/2.;
-                    
-                    upper_arm.insert((
-                        Collider::capsule(Vec3::Y * -half_upper_depth, Vec3::Y * half_upper_depth, upper_arm_info.thickness),
-                        Sleeping::default(),
-                    ));
-                }
+            //creating colliders if the segment doesn't have colliders
+            if !upper_arm.contains::<Collider>() {
+                let half_upper_depth = (upper_arm_info.length - upper_arm_info.thickness*2.)/2.;
+                
+                upper_arm.insert((
+                    Collider::capsule(Vec3::Y * -half_upper_depth, Vec3::Y * half_upper_depth, upper_arm_info.thickness),
+                    Sleeping::default(),
+                ));
             }
 
         }
@@ -308,10 +306,8 @@ impl Command for SpawnArm {
             let mut lower_arm = world.get_entity_mut(self.lower_arm).unwrap();
 
             let lower_arm_info = lower_arm
-                .set_parent(self.upper_arm)
                 .get::<SegmentInfo>()
-                .unwrap()
-                .clone();
+                .unwrap();
             lower_len = lower_arm_info.length;
 
             //creating colliders if the segment doesn't have colliders
@@ -327,10 +323,13 @@ impl Command for SpawnArm {
             //setting joint anchors
             self.joint
                 .set_local_anchor1((-upper_len/2.) * Vec3::Y)
-                .set_local_anchor2((lower_len/2.) * Vec3::Y);
+                .set_local_anchor2((lower_len/2.) * Vec3::Y)
+                .set_contacts_enabled(false);
             
             //setting rapier joint handle
-            lower_arm.insert(MultibodyJoint::new(self.upper_arm, self.joint));
+            lower_arm
+                .set_parent(self.upper_arm)
+                .insert(MultibodyJoint::new(self.upper_arm, self.joint));
         }
         
     }
