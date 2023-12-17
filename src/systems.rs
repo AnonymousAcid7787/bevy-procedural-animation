@@ -65,7 +65,7 @@ pub fn stickman_body_setup(
             length: arm_len,
             thickness: radius
         },
-        RigidBody::Fixed,
+        RigidBody::Dynamic,
     ))
     .id();
 
