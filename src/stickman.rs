@@ -66,9 +66,9 @@ pub struct SegmentInfo {
 
 
 pub struct SpawnArm {
-    upper_arm: Entity,
-    lower_arm: Entity,
-    joint: GenericJoint,
+    pub upper_arm: Entity,
+    pub lower_arm: Entity,
+    pub joint: GenericJoint,
 }
 
 impl Command for SpawnArm {
@@ -128,6 +128,7 @@ impl Command for SpawnArm {
         
     }
 }
+
 
 #[derive(Component)]
 pub struct Arm {

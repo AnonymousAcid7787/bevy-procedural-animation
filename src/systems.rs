@@ -4,6 +4,8 @@ use crate::stickman::{SegmentInfo, StickmanCommandsExt};
 
 pub fn stickman_body_setup(
     mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut standard_materials: ResMut<Assets<StandardMaterial>>,
 ) {
 
     let scale = 1.;
@@ -26,12 +28,26 @@ pub fn stickman_body_setup(
     let stiffness = 1.;
     let damping = 0.03;
 
+    let arm_shape = shape::Capsule {
+        latitudes,
+        longitudes,
+        radius,
+        depth: arm_depth,
+        ..Default::default()
+    };
+    let arm_mesh = meshes.add(arm_shape.into());
+
     let upper_arm = commands.spawn((
         SegmentInfo {
             length: arm_len,
             thickness: radius
         },
         RigidBody::Dynamic,
+        PbrBundle {
+            mesh: arm_mesh.clone(),
+            material: standard_materials.add(Color::BLUE.into()),
+            ..Default::default()
+        },
     ))
     .id();
 
@@ -41,6 +57,11 @@ pub fn stickman_body_setup(
             thickness: radius
         },
         RigidBody::Dynamic,
+        PbrBundle {
+            mesh: arm_mesh,
+            material: standard_materials.add(Color::ORANGE.into()),
+            ..Default::default()
+        },
     ))
     .id();
     
@@ -62,7 +83,6 @@ pub fn test_update(
         if keys.pressed(KeyCode::Up) { f32::to_radians(5.) }
         else if keys.pressed(KeyCode::Down) { f32::to_radians(-5.) }
         else { f32::to_radians(0.) };
-        
 
     let default_limits = JointLimits::default();
 
