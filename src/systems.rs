@@ -1,43 +1,9 @@
 use bevy::prelude::*;
-use bevy_rapier3d::{prelude::*, rapier::{prelude::{JointLimits, MotorModel}, dynamics::JointAxis}};
-use smallvec::SmallVec;
-
-use crate::stickman::{ArmSegment, StickmanArm, MotorParams, SegmentInfo, StickmanCommandsExt};
-
-macro_rules! spawn_body_part {
-    ($mesh:expr, $commands:expr, $material:expr, $transform:expr, $capsule_depth:expr, $radius:expr) => {
-        {
-            $commands.spawn((
-                PbrBundle {
-                    mesh: $mesh, 
-                    material: $material,
-                    transform: $transform,
-                    ..Default::default()
-                },
-                RigidBody::Fixed,
-                Collider::capsule(
-                    Vec3::Y * $capsule_depth/2.,
-                    Vec3::Y * -$capsule_depth/2.,
-                    $radius
-                ),
-            )).id()
-        }
-    };
-}
-
-macro_rules! add_child {
-    ($commands:expr, $parent:expr, $child:expr) => {
-        $commands.add(AddChild {
-            parent: $parent,
-            child: $child,
-        });
-    };
-}
+use bevy_rapier3d::{prelude::*, rapier::prelude::{JointLimits, MotorModel}};
+use crate::stickman::{SegmentInfo, StickmanCommandsExt};
 
 pub fn stickman_body_setup(
     mut commands: Commands,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut standard_materials: ResMut<Assets<StandardMaterial>>,
 ) {
 
     let scale = 1.;
@@ -89,7 +55,7 @@ pub fn stickman_body_setup(
 }
 
 pub fn test_update(
-    mut multibody_joints: Query<(Entity, &mut MultibodyJoint, &mut Sleeping)>,
+    mut multibody_joints: Query<(&mut MultibodyJoint, &mut Sleeping)>,
     keys: Res<Input<KeyCode>>,
 ) {
     let dir = 
@@ -100,7 +66,7 @@ pub fn test_update(
 
     let default_limits = JointLimits::default();
 
-    for (ent, mut multibody_joint, mut sleeping) in multibody_joints.iter_mut() {
+    for (mut multibody_joint, mut sleeping) in multibody_joints.iter_mut() {
         let joint = &mut  multibody_joint.data;
         
         //revolute joint
@@ -133,21 +99,4 @@ pub fn test_update(
 
     }
 
-}
-
-pub fn update_joint_handles(
-    mut arms: Query<&mut StickmanArm, Changed<StickmanArm>>,
-    joint_handles: Query<&RapierMultibodyJointHandle>,
-) {
-    for mut arm in arms.iter_mut() {
-        arm.joints.clear();
-
-        for i in 0..arm.arm_segments.len() {
-            let segment = arm.arm_segments[i];
-            if let Ok(handle) = joint_handles.get(segment) {
-                arm.joints.push(handle.clone());
-            }
-        }
-
-    }
 }

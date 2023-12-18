@@ -10,7 +10,7 @@ use bevy::{
 use bevy_flycam::{NoCameraPlayerPlugin, FlyCam, MovementSettings};
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_rapier3d::{prelude::*, render::RapierDebugRenderPlugin};
-use systems::{stickman_body_setup, test_update, update_joint_handles};
+use systems::{stickman_body_setup, test_update};
 
 
 mod utils;
@@ -49,7 +49,6 @@ fn main() {
             test_update,
             test_system,
         ))
-        .add_systems(PostUpdate, update_joint_handles.after(PhysicsSet::Writeback))
         .register_type::<TestComponent>();
     
     #[cfg(debug_assertions)]
