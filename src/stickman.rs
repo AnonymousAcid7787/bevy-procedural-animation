@@ -129,10 +129,21 @@ impl Command for CreateArm {
     }
 }
 
-
 #[derive(Component)]
 pub struct Arm {
     pub upper_arm: Entity,
     pub lower_arm: Entity,
     pub joint: RapierMultibodyJointHandle,
+}
+
+pub struct CreateShoulder {
+    pub arm_ent: Entity,
+    pub torso_ent: Entity,
+    pub joint: RapierMultibodyJointHandle,
+}
+
+impl Command for CreateShoulder {
+    fn apply(self, world: &mut World) {
+        
+    }
 }
