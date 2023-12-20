@@ -13,6 +13,14 @@ pub trait StickmanCommandsExt {
         joint: impl Into<GenericJoint>,
         auto_joint_anchors: bool,
     ) -> &mut Self;
+    
+    fn create_shoulder(
+        &mut self,
+        arm_ent: Entity,
+        torso_ent: Entity,
+        joint: RapierMultibodyJointHandle,
+        auto_joint_anchors: bool,
+    ) -> &mut Self;
 }
 
 impl StickmanCommandsExt for Commands<'_, '_> {
@@ -22,7 +30,7 @@ impl StickmanCommandsExt for Commands<'_, '_> {
             lower_arm: Entity,
             joint: impl Into<GenericJoint>,
             auto_joint_anchors: bool,
-        ) -> &mut Self {
+    ) -> &mut Self {
         self.add(CreateArm {
             upper_arm,
             lower_arm,
@@ -32,6 +40,23 @@ impl StickmanCommandsExt for Commands<'_, '_> {
 
         return self;
     }
+
+    
+    fn create_shoulder(
+        &mut self,
+        arm_ent: Entity,
+        torso_ent: Entity,
+        joint: RapierMultibodyJointHandle,
+        auto_joint_anchors: bool,
+    ) -> &mut Self {
+        self.add(CreateShoulder {
+            arm_ent,
+            auto_joint_anchors,
+            joint: joint.into(),
+            torso_ent
+        });
+        return self;
+    }
 }
 
 #[derive(Component, Clone)]
@@ -39,7 +64,6 @@ pub struct SegmentInfo {
     pub thickness: f32,
     pub length: f32,
 }
-
 
 /// Physics stuff:
 /// joints
@@ -67,6 +91,26 @@ pub struct SegmentInfo {
 ///     Use joint limits to prevent the arm from clipping into the torso. 
 ///     Not sure if joint limits only limit motor angles or if they actually apply an angular constraint
 
+#[derive(Component)]
+pub struct Arm {
+    pub upper_arm: Entity,
+    pub lower_arm: Entity,
+    pub joint: RapierMultibodyJointHandle,
+}
+
+#[derive(Component)]
+pub struct Shoulder {
+    /// Entity with the [`Arm`] component.
+    pub arm_ent: Entity,
+    /// Entity with the [`Torso`] component.
+    pub torso_ent: Entity,
+    pub joint: RapierMultibodyJointHandle,
+}
+
+#[derive(Component)]
+pub struct Torso {
+    /* to be implemented */
+}
 
 pub struct CreateArm {
     pub upper_arm: Entity,
@@ -134,17 +178,13 @@ impl Command for CreateArm {
     }
 }
 
-#[derive(Component)]
-pub struct Arm {
-    pub upper_arm: Entity,
-    pub lower_arm: Entity,
-    pub joint: RapierMultibodyJointHandle,
-}
-
 pub struct CreateShoulder {
+    /// Entity with the [`Arm`] component.
     pub arm_ent: Entity,
+    /// Entity with the [`Torso`] component.
     pub torso_ent: Entity,
     pub joint: RapierMultibodyJointHandle,
+    pub auto_joint_anchors: bool,
 }
 
 impl Command for CreateShoulder {
