@@ -11,6 +11,7 @@ pub trait StickmanCommandsExt {
         upper_arm: Entity,
         lower_arm: Entity,
         joint: impl Into<GenericJoint>,
+        auto_joint_anchors: bool,
     ) -> &mut Self;
 }
 
@@ -20,11 +21,13 @@ impl StickmanCommandsExt for Commands<'_, '_> {
             upper_arm: Entity,
             lower_arm: Entity,
             joint: impl Into<GenericJoint>,
+            auto_joint_anchors: bool,
         ) -> &mut Self {
         self.add(CreateArm {
             upper_arm,
             lower_arm,
             joint: joint.into(),
+            auto_joint_anchors,
         });
 
         return self;
@@ -69,6 +72,7 @@ pub struct CreateArm {
     pub upper_arm: Entity,
     pub lower_arm: Entity,
     pub joint: GenericJoint,
+    pub auto_joint_anchors: bool,
 }
 
 impl Command for CreateArm {
@@ -115,10 +119,11 @@ impl Command for CreateArm {
             }
 
             //setting joint anchors
-            self.joint
-                .set_local_anchor1((-upper_len/2.) * Vec3::Y)
-                .set_local_anchor2((lower_len/2.) * Vec3::Y)
-                .set_contacts_enabled(false);
+            if self.auto_joint_anchors {
+                self.joint
+                    .set_local_anchor1((-upper_len/2.) * Vec3::Y)
+                    .set_local_anchor2((lower_len/2.) * Vec3::Y);
+            }
             
             //setting rapier joint handle
             lower_arm
