@@ -72,7 +72,7 @@ pub fn stickman_body_setup(
         .build();
     joint.set_contacts_enabled(false);
     
-    commands.spawn_arm(upper_arm, lower_arm, joint);
+    commands.create_arm(upper_arm, lower_arm, joint);
 }
 
 pub fn test_update(

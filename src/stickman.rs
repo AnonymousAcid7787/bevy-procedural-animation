@@ -6,7 +6,7 @@ use bevy_rapier3d::{
 };
 
 pub trait StickmanCommandsExt {
-    fn spawn_arm(
+    fn create_arm(
         &mut self,
         upper_arm: Entity,
         lower_arm: Entity,
@@ -15,13 +15,13 @@ pub trait StickmanCommandsExt {
 }
 
 impl StickmanCommandsExt for Commands<'_, '_> {
-    fn spawn_arm(
+    fn create_arm(
             &mut self,
             upper_arm: Entity,
             lower_arm: Entity,
             joint: impl Into<GenericJoint>,
         ) -> &mut Self {
-        self.add(SpawnArm {
+        self.add(CreateArm {
             upper_arm,
             lower_arm,
             joint: joint.into(),
@@ -65,13 +65,13 @@ pub struct SegmentInfo {
 ///     Not sure if joint limits only limit motor angles or if they actually apply an angular constraint
 
 
-pub struct SpawnArm {
+pub struct CreateArm {
     pub upper_arm: Entity,
     pub lower_arm: Entity,
     pub joint: GenericJoint,
 }
 
-impl Command for SpawnArm {
+impl Command for CreateArm {
     fn apply(mut self, world: &mut World) {
         let upper_len;
         let lower_len;
