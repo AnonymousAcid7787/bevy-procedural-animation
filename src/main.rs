@@ -9,7 +9,8 @@ use bevy::{
 };
 use bevy_flycam::{NoCameraPlayerPlugin, FlyCam, MovementSettings};
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
-use bevy_rapier3d::{prelude::*, render::RapierDebugRenderPlugin};
+use bevy_rapier3d::{prelude::*, render::RapierDebugRenderPlugin, rapier::dynamics::MotorModel};
+use stickman::{StickmanCommandsExt, SegmentInfo};
 use systems::{stickman_body_setup, test_update};
 
 
@@ -42,7 +43,7 @@ fn main() {
             RapierPhysicsPlugin::<()>::default(),
         ))
         .add_systems(Startup, ( 
-            stickman_body_setup,
+            // stickman_body_setup,
             scene_setup
         ))
         .add_systems(Update, (
@@ -108,6 +109,7 @@ pub fn scene_setup(
         },
         Collider::cuboid(50., 0.5, 50.)
     ));
+
 }
 
 

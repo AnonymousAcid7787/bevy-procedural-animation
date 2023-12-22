@@ -15,10 +15,17 @@ pub trait StickmanCommandsExt {
         auto_joint_anchors: bool,
     ) -> Entity;
     
+    fn add_segment_physics(
+        &mut self,
+        entity: Entity,
+        segment_info: SegmentInfo,
+    ) -> &mut Self;
 }
 
 impl StickmanCommandsExt for Commands<'_, '_> {
+
     /// Create an arm with the upper and lower arms inputted. Returns an entity representing the new arm.
+    #[inline]
     fn create_arm(
             &mut self,
             upper_arm: Entity,
@@ -31,7 +38,7 @@ impl StickmanCommandsExt for Commands<'_, '_> {
         self.add(CreateArm {
             upper_arm,
             lower_arm,
-            torso_ent,
+            torso_ent: Some(torso_ent),
             arm_joint: arm_joint.into(),
             shoulder_joint: shoulder_joint.into(),
             auto_joint_anchors,
@@ -44,6 +51,25 @@ impl StickmanCommandsExt for Commands<'_, '_> {
         }).id();
     }
 
+    /// Creates a capsule collider for the given `entity` according to the information on the `segment_info`.
+    /// 
+    /// Adds the `segment_info` component to the `entity`.
+    #[inline]
+    fn add_segment_physics(
+        &mut self,
+        entity: Entity,
+        segment_info: SegmentInfo,
+    ) -> &mut Self {
+        let half_segment_depth = (segment_info.length - segment_info.thickness*2.)/2.;
+            
+        self.get_entity(entity).unwrap().insert((
+            Collider::capsule(Vec3::Y * -half_segment_depth, Vec3::Y * half_segment_depth, segment_info.thickness),
+            Sleeping::default(),
+            segment_info
+        ));
+
+        return self;
+    }
 }
 
 #[derive(Component, Clone)]
@@ -95,7 +121,7 @@ pub struct Torso {
 pub struct CreateArm {
     pub upper_arm: Entity,
     pub lower_arm: Entity,
-    pub torso_ent: Entity,
+    pub torso_ent: Option<Entity>,
     pub arm_joint: GenericJoint,
     pub shoulder_joint: GenericJoint,
     pub auto_joint_anchors: bool,
@@ -103,23 +129,22 @@ pub struct CreateArm {
 
 impl Command for CreateArm {
     fn apply(mut self, world: &mut World) {
-        let upper_len;
-        let lower_len;
+        let upper_info;
 
         {//upper arm
             let mut upper_arm = world.get_entity_mut(self.upper_arm).unwrap();
-
-            let upper_arm_info = upper_arm
+            
+            upper_info = upper_arm
                 .get::<SegmentInfo>()
-                .unwrap();
-            upper_len = upper_arm_info.length;
+                .expect("Upper arm missing SegmentInfo component!")
+                .clone();
 
             //creating colliders if the segment doesn't have colliders
             if !upper_arm.contains::<Collider>() {
-                let half_upper_depth = (upper_arm_info.length - upper_arm_info.thickness*2.)/2.;
+                let half_upper_depth = (upper_info.length - upper_info.thickness*2.)/2.;
                 
                 upper_arm.insert((
-                    Collider::capsule(Vec3::Y * -half_upper_depth, Vec3::Y * half_upper_depth, upper_arm_info.thickness),
+                    Collider::capsule(Vec3::Y * -half_upper_depth, Vec3::Y * half_upper_depth, upper_info.thickness),
                     Sleeping::default(),
                 ));
             }
@@ -129,17 +154,17 @@ impl Command for CreateArm {
         {//lower arm
             let mut lower_arm = world.get_entity_mut(self.lower_arm).unwrap();
 
-            let lower_arm_info = lower_arm
+            let lower_info = lower_arm
                 .get::<SegmentInfo>()
-                .unwrap();
-            lower_len = lower_arm_info.length;
+                .expect("Lower arm missing SegmentInfo component!")
+                .clone();
 
             //creating colliders if the segment doesn't have colliders
             if !lower_arm.contains::<Collider>() {
-                let half_lower_depth = (lower_arm_info.length - lower_arm_info.thickness*2.)/2.;
+                let half_lower_depth = (lower_info.length - lower_info.thickness*2.)/2.;
                 
                 lower_arm.insert((
-                    Collider::capsule(Vec3::Y * -half_lower_depth, Vec3::Y * half_lower_depth, lower_arm_info.thickness),
+                    Collider::capsule(Vec3::Y * -half_lower_depth, Vec3::Y * half_lower_depth, lower_info.thickness),
                     Sleeping::default(),
                 ));
             }
@@ -147,8 +172,8 @@ impl Command for CreateArm {
             //setting joint anchors
             if self.auto_joint_anchors {
                 self.arm_joint
-                    .set_local_anchor1((-upper_len/2.) * Vec3::Y)
-                    .set_local_anchor2((lower_len/2.) * Vec3::Y);
+                    .set_local_anchor1((-upper_info.length/2.) * Vec3::Y)
+                    .set_local_anchor2((lower_info.length/2.) * Vec3::Y);
             }
             
             //setting rapier joint handle
@@ -157,5 +182,21 @@ impl Command for CreateArm {
                 .insert(MultibodyJoint::new(self.upper_arm, self.arm_joint));
         }
         
+        //shoulder
+        if let Some(torso_ent) = self.torso_ent {
+            if self.auto_joint_anchors {
+                let torso_info = world.get_entity(torso_ent)
+                    .unwrap()
+                    .get::<SegmentInfo>()
+                    .expect("Torso missing SegmentInfo component!");
+                self.shoulder_joint
+                    .set_local_anchor1((torso_info.length/2.) * Vec3::Y)
+                    .set_local_anchor2((upper_info.length/2.) * Vec3::Y);
+            }
+            let mut upper_arm = world.get_entity_mut(self.upper_arm).unwrap();
+            upper_arm
+                .set_parent(torso_ent)
+                .insert(MultibodyJoint::new(torso_ent, self.shoulder_joint));
+        }
     }
 }

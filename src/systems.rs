@@ -27,10 +27,13 @@ pub fn stickman_body_setup(
     let target_vel = f32::to_radians(30.);
     let stiffness = 1.;
     let damping = 0.03;
+    
 
     let arm;
     let torso;
-    let shoulder_joint;
+    let mut shoulder_joint = SphericalJointBuilder::new()
+        .build();
+    shoulder_joint.set_contacts_enabled(false);
 
     {//torso
         let torso_shape = shape::Capsule {
@@ -43,10 +46,6 @@ pub fn stickman_body_setup(
         let torso_mesh = meshes.add(torso_shape.into());
 
         torso = commands.spawn((
-            SegmentInfo {
-                length: torso_len,
-                thickness: radius
-            },
             RigidBody::Dynamic,
             PbrBundle {
                 mesh: torso_mesh,
@@ -55,8 +54,13 @@ pub fn stickman_body_setup(
             }
         )).id();
 
-        shoulder_joint = SphericalJointBuilder::new()
-            .build();
+        commands.add_segment_physics(
+            torso,
+            SegmentInfo {
+                length: torso_len,
+                thickness: radius
+            }
+        );
     }
 
     //arm
