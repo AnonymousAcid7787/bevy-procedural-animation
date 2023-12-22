@@ -1,6 +1,6 @@
 use bevy::{prelude::*, ecs::system::Command};
 use bevy_rapier3d::{
-    dynamics::{Sleeping, MultibodyJoint, GenericJoint},
+    dynamics::{Sleeping, MultibodyJoint, GenericJoint, ImpulseJoint},
     geometry::Collider
 };
 
@@ -179,7 +179,7 @@ impl Command for CreateArm {
             //setting rapier joint handle
             lower_arm
                 .set_parent(self.upper_arm)
-                .insert(MultibodyJoint::new(self.upper_arm, self.arm_joint));
+                .insert(ImpulseJoint::new(self.upper_arm, self.arm_joint));
         }
         
         //shoulder
@@ -196,7 +196,7 @@ impl Command for CreateArm {
             let mut upper_arm = world.get_entity_mut(self.upper_arm).unwrap();
             upper_arm
                 .set_parent(torso_ent)
-                .insert(MultibodyJoint::new(torso_ent, self.shoulder_joint));
+                .insert(ImpulseJoint::new(torso_ent, self.shoulder_joint));
         }
     }
 }

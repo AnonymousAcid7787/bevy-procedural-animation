@@ -115,7 +115,7 @@ pub fn stickman_body_setup(
 }
 
 pub fn test_update(
-    mut multibody_joints: Query<(&mut MultibodyJoint, &mut Sleeping)>,
+    mut multibody_joints: Query<(&mut ImpulseJoint, &mut Sleeping)>,
     keys: Res<Input<KeyCode>>,
 ) {
     let dir = 

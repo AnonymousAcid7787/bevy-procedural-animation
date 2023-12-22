@@ -43,7 +43,7 @@ fn main() {
             RapierPhysicsPlugin::<()>::default(),
         ))
         .add_systems(Startup, ( 
-            // stickman_body_setup,
+            stickman_body_setup,
             scene_setup
         ))
         .add_systems(Update, (
