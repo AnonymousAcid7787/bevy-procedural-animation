@@ -1,8 +1,8 @@
-use bevy::{prelude::*, ecs::system::Command};
+use bevy::{prelude::*, ecs::system::{Command, EntityCommands}};
 use bevy_rapier3d::{
     prelude::RapierMultibodyJointHandle,
     dynamics::{Sleeping, MultibodyJoint, GenericJoint},
-    geometry::Collider
+    geometry::Collider, rapier::dynamics::MultibodyJointHandle
 };
 
 pub trait StickmanCommandsExt {
@@ -12,25 +12,26 @@ pub trait StickmanCommandsExt {
         lower_arm: Entity,
         joint: impl Into<GenericJoint>,
         auto_joint_anchors: bool,
-    ) -> &mut Self;
+    ) -> Entity;
     
     fn create_shoulder(
         &mut self,
         arm_ent: Entity,
         torso_ent: Entity,
-        joint: RapierMultibodyJointHandle,
+        joint: impl Into<GenericJoint>,
         auto_joint_anchors: bool,
-    ) -> &mut Self;
+    ) -> Entity;
 }
 
 impl StickmanCommandsExt for Commands<'_, '_> {
+    /// Create an arm with the upper and lower arms inputted. Returns an entity representing the new arm.
     fn create_arm(
             &mut self,
             upper_arm: Entity,
             lower_arm: Entity,
             joint: impl Into<GenericJoint>,
             auto_joint_anchors: bool,
-    ) -> &mut Self {
+    ) -> Entity {
         self.add(CreateArm {
             upper_arm,
             lower_arm,
@@ -38,7 +39,11 @@ impl StickmanCommandsExt for Commands<'_, '_> {
             auto_joint_anchors,
         });
 
-        return self;
+        return self.spawn(Arm {
+            joint: RapierMultibodyJointHandle(MultibodyJointHandle::invalid()),
+            upper_arm,
+            lower_arm,
+        }).id();
     }
 
     
@@ -46,16 +51,21 @@ impl StickmanCommandsExt for Commands<'_, '_> {
         &mut self,
         arm_ent: Entity,
         torso_ent: Entity,
-        joint: RapierMultibodyJointHandle,
+        joint: impl Into<GenericJoint>,
         auto_joint_anchors: bool,
-    ) -> &mut Self {
+    ) -> Entity {
         self.add(CreateShoulder {
             arm_ent,
             auto_joint_anchors,
             joint: joint.into(),
             torso_ent
         });
-        return self;
+
+        return self.spawn(Shoulder {
+            arm_ent,
+            torso_ent,
+            joint: RapierMultibodyJointHandle(MultibodyJointHandle::invalid())
+        }).id();
     }
 }
 
@@ -183,7 +193,7 @@ pub struct CreateShoulder {
     pub arm_ent: Entity,
     /// Entity with the [`Torso`] component.
     pub torso_ent: Entity,
-    pub joint: RapierMultibodyJointHandle,
+    pub joint: GenericJoint,
     pub auto_joint_anchors: bool,
 }
 

@@ -28,51 +28,88 @@ pub fn stickman_body_setup(
     let stiffness = 1.;
     let damping = 0.03;
 
-    let arm_shape = shape::Capsule {
-        latitudes,
-        longitudes,
-        radius,
-        depth: arm_depth,
-        ..Default::default()
-    };
-    let arm_mesh = meshes.add(arm_shape.into());
+    let arm;
+    let shoulder;
 
-    let upper_arm = commands.spawn((
-        SegmentInfo {
-            length: arm_len,
-            thickness: radius
-        },
-        RigidBody::Dynamic,
-        PbrBundle {
-            mesh: arm_mesh.clone(),
-            material: standard_materials.add(Color::BLUE.into()),
+    //arm
+    {
+        let arm_shape = shape::Capsule {
+            latitudes,
+            longitudes,
+            radius,
+            depth: arm_depth,
             ..Default::default()
-        },
-    ))
-    .id();
+        };
+        let arm_mesh = meshes.add(arm_shape.into());
 
-    let lower_arm = commands.spawn((
-        SegmentInfo {
-            length: arm_len,
-            thickness: radius
-        },
-        RigidBody::Dynamic,
-        PbrBundle {
-            mesh: arm_mesh,
-            material: standard_materials.add(Color::ORANGE.into()),
+        let upper_arm = commands.spawn((
+            SegmentInfo {
+                length: arm_len,
+                thickness: radius
+            },
+            RigidBody::Dynamic,
+            PbrBundle {
+                mesh: arm_mesh.clone(),
+                material: standard_materials.add(Color::BLUE.into()),
+                ..Default::default()
+            },
+        ))
+        .id();
+
+        let lower_arm = commands.spawn((
+            SegmentInfo {
+                length: arm_len,
+                thickness: radius
+            },
+            RigidBody::Dynamic,
+            PbrBundle {
+                mesh: arm_mesh,
+                material: standard_materials.add(Color::ORANGE.into()),
+                ..Default::default()
+            },
+        ))
+        .id();
+        
+        let mut joint = RevoluteJointBuilder::new(Vec3::Z)
+            .limits([0., 150_f32.to_radians()])
+            .motor(target_pos, target_vel, stiffness, damping)
+            .motor_model(MotorModel::ForceBased)
+            .build();
+        joint.set_contacts_enabled(false);
+        
+        arm = commands.create_arm(upper_arm, lower_arm, joint, true);
+    }
+
+    //torso
+    {
+        let torso_shape = shape::Capsule {
+            latitudes,
+            longitudes,
+            radius,
+            depth: torso_depth,
             ..Default::default()
-        },
-    ))
-    .id();
+        };
+        let torso_mesh = meshes.add(torso_shape.into());
     
-    let mut joint = RevoluteJointBuilder::new(Vec3::Z)
-        .limits([0., 150_f32.to_radians()])
-        .motor(target_pos, target_vel, stiffness, damping)
-        .motor_model(MotorModel::ForceBased)
-        .build();
-    joint.set_contacts_enabled(false);
-    
-    commands.create_arm(upper_arm, lower_arm, joint, true);
+        let torso = commands.spawn((
+            SegmentInfo {
+                length: torso_len,
+                thickness: radius
+            },
+            RigidBody::Dynamic,
+            PbrBundle {
+                mesh: torso_mesh,
+                material: standard_materials.add(Color::RED.into()),
+                ..Default::default()
+            }
+        )).id();
+
+        let joint = SphericalJointBuilder::new()
+            .build();
+
+        shoulder = commands.create_shoulder(arm, torso, joint, true);
+    }
+
 }
 
 pub fn test_update(
