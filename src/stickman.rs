@@ -1,8 +1,7 @@
-use bevy::{prelude::*, ecs::system::{Command, EntityCommands}};
+use bevy::{prelude::*, ecs::system::Command};
 use bevy_rapier3d::{
-    prelude::RapierMultibodyJointHandle,
     dynamics::{Sleeping, MultibodyJoint, GenericJoint},
-    geometry::Collider, rapier::dynamics::MultibodyJointHandle
+    geometry::Collider
 };
 
 pub trait StickmanCommandsExt {
@@ -10,17 +9,12 @@ pub trait StickmanCommandsExt {
         &mut self,
         upper_arm: Entity,
         lower_arm: Entity,
-        joint: impl Into<GenericJoint>,
+        torso_ent: Entity,
+        arm_joint: impl Into<GenericJoint>,
+        shoulder_joint: impl Into<GenericJoint>,
         auto_joint_anchors: bool,
     ) -> Entity;
     
-    fn create_shoulder(
-        &mut self,
-        arm_ent: Entity,
-        torso_ent: Entity,
-        joint: impl Into<GenericJoint>,
-        auto_joint_anchors: bool,
-    ) -> Entity;
 }
 
 impl StickmanCommandsExt for Commands<'_, '_> {
@@ -29,44 +23,27 @@ impl StickmanCommandsExt for Commands<'_, '_> {
             &mut self,
             upper_arm: Entity,
             lower_arm: Entity,
-            joint: impl Into<GenericJoint>,
+            torso_ent: Entity,
+            arm_joint: impl Into<GenericJoint>,
+            shoulder_joint: impl Into<GenericJoint>,
             auto_joint_anchors: bool,
     ) -> Entity {
         self.add(CreateArm {
             upper_arm,
             lower_arm,
-            joint: joint.into(),
+            torso_ent,
+            arm_joint: arm_joint.into(),
+            shoulder_joint: shoulder_joint.into(),
             auto_joint_anchors,
         });
 
         return self.spawn(Arm {
-            joint: RapierMultibodyJointHandle(MultibodyJointHandle::invalid()),
             upper_arm,
             lower_arm,
+            torso_ent: Some(torso_ent)
         }).id();
     }
 
-    
-    fn create_shoulder(
-        &mut self,
-        arm_ent: Entity,
-        torso_ent: Entity,
-        joint: impl Into<GenericJoint>,
-        auto_joint_anchors: bool,
-    ) -> Entity {
-        self.add(CreateShoulder {
-            arm_ent,
-            auto_joint_anchors,
-            joint: joint.into(),
-            torso_ent
-        });
-
-        return self.spawn(Shoulder {
-            arm_ent,
-            torso_ent,
-            joint: RapierMultibodyJointHandle(MultibodyJointHandle::invalid())
-        }).id();
-    }
 }
 
 #[derive(Component, Clone)]
@@ -105,16 +82,9 @@ pub struct SegmentInfo {
 pub struct Arm {
     pub upper_arm: Entity,
     pub lower_arm: Entity,
-    pub joint: RapierMultibodyJointHandle,
-}
-
-#[derive(Component)]
-pub struct Shoulder {
-    /// Entity with the [`Arm`] component.
-    pub arm_ent: Entity,
-    /// Entity with the [`Torso`] component.
-    pub torso_ent: Entity,
-    pub joint: RapierMultibodyJointHandle,
+    /// The [`Torso`] entity that this arm is connected to. 
+    /// Set this to [`None`] to have an arm without a connection to a torso.
+    pub torso_ent: Option<Entity>,
 }
 
 #[derive(Component)]
@@ -125,7 +95,9 @@ pub struct Torso {
 pub struct CreateArm {
     pub upper_arm: Entity,
     pub lower_arm: Entity,
-    pub joint: GenericJoint,
+    pub torso_ent: Entity,
+    pub arm_joint: GenericJoint,
+    pub shoulder_joint: GenericJoint,
     pub auto_joint_anchors: bool,
 }
 
@@ -171,10 +143,10 @@ impl Command for CreateArm {
                     Sleeping::default(),
                 ));
             }
-
+            
             //setting joint anchors
             if self.auto_joint_anchors {
-                self.joint
+                self.arm_joint
                     .set_local_anchor1((-upper_len/2.) * Vec3::Y)
                     .set_local_anchor2((lower_len/2.) * Vec3::Y);
             }
@@ -182,23 +154,8 @@ impl Command for CreateArm {
             //setting rapier joint handle
             lower_arm
                 .set_parent(self.upper_arm)
-                .insert(MultibodyJoint::new(self.upper_arm, self.joint));
+                .insert(MultibodyJoint::new(self.upper_arm, self.arm_joint));
         }
-        
-    }
-}
-
-pub struct CreateShoulder {
-    /// Entity with the [`Arm`] component.
-    pub arm_ent: Entity,
-    /// Entity with the [`Torso`] component.
-    pub torso_ent: Entity,
-    pub joint: GenericJoint,
-    pub auto_joint_anchors: bool,
-}
-
-impl Command for CreateShoulder {
-    fn apply(self, world: &mut World) {
         
     }
 }

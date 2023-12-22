@@ -29,7 +29,35 @@ pub fn stickman_body_setup(
     let damping = 0.03;
 
     let arm;
-    let shoulder;
+    let torso;
+    let shoulder_joint;
+
+    {//torso
+        let torso_shape = shape::Capsule {
+            latitudes,
+            longitudes,
+            radius,
+            depth: torso_depth,
+            ..Default::default()
+        };
+        let torso_mesh = meshes.add(torso_shape.into());
+
+        torso = commands.spawn((
+            SegmentInfo {
+                length: torso_len,
+                thickness: radius
+            },
+            RigidBody::Dynamic,
+            PbrBundle {
+                mesh: torso_mesh,
+                material: standard_materials.add(Color::RED.into()),
+                ..Default::default()
+            }
+        )).id();
+
+        shoulder_joint = SphericalJointBuilder::new()
+            .build();
+    }
 
     //arm
     {
@@ -77,37 +105,7 @@ pub fn stickman_body_setup(
             .build();
         joint.set_contacts_enabled(false);
         
-        arm = commands.create_arm(upper_arm, lower_arm, joint, true);
-    }
-
-    //torso
-    {
-        let torso_shape = shape::Capsule {
-            latitudes,
-            longitudes,
-            radius,
-            depth: torso_depth,
-            ..Default::default()
-        };
-        let torso_mesh = meshes.add(torso_shape.into());
-    
-        let torso = commands.spawn((
-            SegmentInfo {
-                length: torso_len,
-                thickness: radius
-            },
-            RigidBody::Dynamic,
-            PbrBundle {
-                mesh: torso_mesh,
-                material: standard_materials.add(Color::RED.into()),
-                ..Default::default()
-            }
-        )).id();
-
-        let joint = SphericalJointBuilder::new()
-            .build();
-
-        shoulder = commands.create_shoulder(arm, torso, joint, true);
+        arm = commands.create_arm(upper_arm, lower_arm, torso, joint, shoulder_joint, true);
     }
 
 }
