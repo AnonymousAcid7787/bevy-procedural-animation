@@ -3,7 +3,7 @@ use bevy::{
     DefaultPlugins, 
     render::{
         RenderPlugin, 
-        settings::{WgpuSettings, PowerPreference}
+        settings::{WgpuSettings, PowerPreference, RenderCreation}
     }, 
     pbr::wireframe::WireframePlugin
 };
@@ -23,11 +23,13 @@ fn main() {
     let default_plugins = 
         DefaultPlugins.set(
             RenderPlugin {
-                wgpu_settings: WgpuSettings {
-                    // backends: Some(Backends::DX12),
-                    power_preference: PowerPreference::HighPerformance,
-                    ..Default::default()
-                },
+                render_creation: RenderCreation::Automatic(
+                    WgpuSettings {
+                        // backends: Some(Backends::DX12),
+                        power_preference: PowerPreference::HighPerformance,
+                        ..Default::default()
+                    },
+                )
             }
         );
     
