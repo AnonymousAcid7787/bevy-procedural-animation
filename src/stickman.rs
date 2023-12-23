@@ -179,7 +179,7 @@ impl Command for CreateArm {
             //setting rapier joint handle
             lower_arm
                 .set_parent(self.upper_arm)
-                .insert(ImpulseJoint::new(self.upper_arm, self.arm_joint));
+                .insert(MultibodyJoint::new(self.upper_arm, self.arm_joint));
         }
         
         //shoulder
