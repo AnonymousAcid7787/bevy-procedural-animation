@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use bevy_rapier3d::{prelude::*, rapier::prelude::{JointLimits, MotorModel}};
+use bevy_rapier3d::{prelude::*, rapier::{prelude::{JointLimits, MotorModel}, dynamics::JointAxis}};
 use crate::stickman::{SegmentInfo, StickmanCommandsExt};
 
 pub fn stickman_body_setup(
@@ -32,6 +32,9 @@ pub fn stickman_body_setup(
     let arm;
     let torso;
     let mut shoulder_joint = SphericalJointBuilder::new()
+        .limits(JointAxis::AngZ, [90_f32.to_radians(), 270_f32.to_radians()])
+        .limits(JointAxis::AngY, [60_f32.to_radians(), 300_f32.to_radians()])
+        .limits(JointAxis::AngX, [0_f32.to_radians(), 180_f32.to_radians()])
         .build();
     shoulder_joint.set_contacts_enabled(false);
 
@@ -61,6 +64,14 @@ pub fn stickman_body_setup(
                 thickness: radius
             }
         );
+
+        let torso_locker = commands.spawn((
+            RigidBody::Fixed,
+            SpatialBundle::default()
+        )).id();
+        commands.get_entity(torso).unwrap()
+            .set_parent(torso_locker)
+            .insert(ImpulseJoint::new(torso_locker, FixedJoint::default()));
     }
 
     //arm

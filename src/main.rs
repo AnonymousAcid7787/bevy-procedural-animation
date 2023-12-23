@@ -9,10 +9,9 @@ use bevy::{
 };
 use bevy_flycam::{NoCameraPlayerPlugin, FlyCam, MovementSettings};
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
-use bevy_rapier3d::{prelude::*, render::RapierDebugRenderPlugin, rapier::dynamics::MotorModel};
+use bevy_rapier3d::{prelude::*, render::RapierDebugRenderPlugin, rapier::{dynamics::MotorModel, pipeline::PhysicsHooks}};
 use stickman::{StickmanCommandsExt, SegmentInfo};
 use systems::{stickman_body_setup, test_update};
-
 
 mod utils;
 mod stickman;
@@ -79,7 +78,6 @@ pub fn test_system(
         ));
     }
 }
-
 
 pub fn scene_setup(
     mut commands: Commands,
