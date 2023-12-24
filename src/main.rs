@@ -10,7 +10,7 @@ use bevy::{
 use bevy_flycam::{NoCameraPlayerPlugin, FlyCam, MovementSettings};
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_rapier3d::{prelude::*, render::RapierDebugRenderPlugin};
-use systems::{stickman_body_setup, test_update, spawn_cubes, test_startup, stickman_setup};
+use systems::{test_update, spawn_cubes, stickman_setup};
 
 mod utils;
 mod stickman;
