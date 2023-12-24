@@ -9,14 +9,13 @@ use bevy::{
 };
 use bevy_flycam::{NoCameraPlayerPlugin, FlyCam, MovementSettings};
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
-use bevy_rapier3d::{prelude::*, render::RapierDebugRenderPlugin, rapier::{dynamics::MotorModel, pipeline::PhysicsHooks}};
-use stickman::{StickmanCommandsExt, SegmentInfo};
-use systems::{stickman_body_setup, test_update};
+use bevy_rapier3d::{prelude::*, render::RapierDebugRenderPlugin};
+use systems::{stickman_body_setup, test_update, spawn_cubes, test_startup, stickman_setup};
 
 mod utils;
 mod stickman;
 mod systems;
-
+ 
 fn main() {
     let mut app = App::new();
 
@@ -44,12 +43,13 @@ fn main() {
             RapierPhysicsPlugin::<()>::default(),
         ))
         .add_systems(Startup, ( 
-            stickman_body_setup,
+            stickman_setup,
+            // test_startup,
             scene_setup
         ))
         .add_systems(Update, (
             test_update,
-            test_system,
+            spawn_cubes
         ))
         .register_type::<TestComponent>();
     
@@ -61,24 +61,6 @@ fn main() {
 
     app.run();
 
-}
-
-pub fn test_system(
-    mut commands: Commands,
-    camera: Query<&Transform, With<FlyCam>>,
-    keys: Res<Input<KeyCode>>,
-) {
-    let cam_transform = camera.get_single().unwrap();
-    if keys.just_pressed(KeyCode::J) {
-        commands.spawn((
-            RigidBody::Dynamic,
-            Collider::cuboid(0.1, 0.1, 0.1),
-            SpatialBundle {
-                transform: Transform::from_xyz(cam_transform.translation.x, cam_transform.translation.y, cam_transform.translation.z),
-                ..Default::default()
-            }
-        ));
-    }
 }
 
 pub fn scene_setup(
