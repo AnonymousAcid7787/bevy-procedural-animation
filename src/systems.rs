@@ -3,19 +3,77 @@ use bevy_flycam::FlyCam;
 use bevy_rapier3d::{prelude::*, rapier::prelude::{JointLimits, MotorModel}};
 use crate::stickman::{SegmentInfo, StickmanCommandsExt};
 
+
+macro_rules! drive_motor {
+    (
+        $joint:expr,
+        $dir:expr,
+        $joint_axis:expr,
+        $sleeping:expr
+    ) => {
+        let default_limits = JointLimits::default();
+        if let Some(motor) = $joint.motor($joint_axis) {
+            let target_vel = motor.target_vel;
+            let current_target_pos = motor.target_pos;
+            let stiffness = motor.stiffness;
+            let damping = motor.damping;
+            let limits = $joint.limits($joint_axis).unwrap_or(&default_limits);
+            
+            let new_target_pos = f32::clamp(
+                current_target_pos + $dir,
+                limits.min * (1. + damping),
+                limits.max
+            );
+
+            if $dir != 0. {
+                $sleeping.sleeping = false;
+            }
+            
+            $joint.set_motor(
+                $joint_axis,
+                new_target_pos,
+                target_vel,
+                stiffness,
+                damping
+            );
+        }
+    };
+}
+
+
 pub fn test_update(
-    mut impulse_joints: Query<(&mut MultibodyJoint, &mut Sleeping)>,
+    mut shoulder_joints: Query<(&mut MultibodyJoint, &mut Sleeping), With<UpperArm>>,
+    mut elbow_joints: Query<(&mut MultibodyJoint, &mut Sleeping), (With<LowerArm>, Without<UpperArm>)>,
     keys: Res<Input<KeyCode>>,
 ) {
+    let default_limits = JointLimits::default();
     let dir = 
         if keys.pressed(KeyCode::Up) { f32::to_radians(5.) }
         else if keys.pressed(KeyCode::Down) { f32::to_radians(-5.) }
         else { f32::to_radians(0.) };
 
-    let default_limits = JointLimits::default();
-
-    for (mut impulse_joint, mut sleeping) in impulse_joints.iter_mut() {
-        let joint = &mut  impulse_joint.data;
+    //shoulder control
+    let x_control = keys.pressed(KeyCode::X);
+    let y_control = keys.pressed(KeyCode::Y);
+    let z_control = keys.pressed(KeyCode::Z);
+    for(mut shoulder_joint, mut sleeping) in shoulder_joints.iter_mut() {
+        let joint = &mut shoulder_joint.data;
+        if joint.as_spherical().is_none() {continue;}
+        if x_control {
+            drive_motor!(joint, dir, JointAxis::AngX, sleeping);
+        }
+        if y_control {
+            drive_motor!(joint, dir, JointAxis::AngY, sleeping);
+        }
+        if z_control {
+            drive_motor!(joint, dir, JointAxis::AngZ, sleeping);
+        }
+    }
+    
+    //elbow control
+    if x_control || y_control || z_control {return;}
+    for (mut elbow_joint, mut sleeping) in elbow_joints.iter_mut() {
+        let joint = &mut  elbow_joint.data;
         
         //revolute joint
         if joint.as_revolute().is_some() {
@@ -44,7 +102,6 @@ pub fn test_update(
                 damping
             );
         }
-
     }
 }
 
@@ -101,7 +158,10 @@ pub fn stickman_setup(
     );
 
     //upper arm
-    let upper_arm = commands.spawn(RigidBody::Dynamic).id();
+    let upper_arm = commands.spawn((
+        RigidBody::Dynamic,
+        UpperArm,
+    )).id();
     commands.add_segment_physics(
         upper_arm,
         SegmentInfo {
@@ -111,7 +171,10 @@ pub fn stickman_setup(
     );
 
     //lower arm
-    let lower_arm = commands.spawn(RigidBody::Dynamic).id();
+    let lower_arm = commands.spawn((
+        RigidBody::Dynamic,
+        LowerArm,
+    )).id();
     commands.add_segment_physics(
         lower_arm,
         SegmentInfo {
@@ -122,13 +185,18 @@ pub fn stickman_setup(
 
 
     //joints
-    let mut shoulder = SphericalJoint::new();
+    let mut shoulder = SphericalJointBuilder::new()
+        .motor(JointAxis::AngX, target_pos, target_vel, stiffness, damping)
+        .motor(JointAxis::AngY, target_pos, target_vel, stiffness, damping)
+        .motor(JointAxis::AngZ, target_pos, target_vel, stiffness, damping)
+        .build();
         shoulder.set_contacts_enabled(false);
         let shoulder: GenericJoint = shoulder.into();
     let mut elbow = RevoluteJointBuilder::new(Vec3::Z)
-        .limits([0., 150_f32.to_radians()])
+        .limits([10_f32.to_radians(), 150_f32.to_radians()])
         .motor(target_pos, target_vel, stiffness, damping)
         .motor_model(MotorModel::ForceBased)
+        .motor_max_force(10.)
         .build();
         elbow.set_contacts_enabled(false);
 
@@ -142,3 +210,8 @@ pub fn stickman_setup(
     );
     
 }
+
+#[derive(Component)]
+pub struct UpperArm;
+#[derive(Component)]
+pub struct LowerArm;

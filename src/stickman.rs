@@ -1,6 +1,6 @@
 use bevy::{prelude::*, ecs::system::Command};
 use bevy_rapier3d::{
-    dynamics::{Sleeping, MultibodyJoint, GenericJoint, ImpulseJoint},
+    dynamics::{Sleeping, MultibodyJoint, GenericJoint, ImpulseJoint, JointAxesMask},
     geometry::Collider
 };
 
@@ -166,13 +166,17 @@ impl Command for CreateArm {
         //shoulder
         if let Some(torso_ent) = self.torso_ent {
             world.get_entity_mut(self.upper_arm).unwrap()
-                .insert(ImpulseJoint::new(torso_ent, self.shoulder_joint.unwrap()))
+                .insert(MultibodyJoint::new(torso_ent, self.shoulder_joint.unwrap()))
                 .set_parent(torso_ent);
         }
 
         //elbow
-        world.get_entity_mut(self.lower_arm).unwrap()
+        let mut lower_arm_mut = world.get_entity_mut(self.lower_arm).unwrap();
+        lower_arm_mut
             .insert(MultibodyJoint::new(self.upper_arm, self.arm_joint))
             .set_parent(self.upper_arm);
+        if let Some(torso_ent) = self.torso_ent {
+            lower_arm_mut.insert(ImpulseJoint::new(torso_ent, GenericJoint::new(JointAxesMask::empty())));
         }
+    }
 }
