@@ -189,16 +189,19 @@ pub fn stickman_setup(
 
 
     //joints
+    let x_limits = [0., 2.*PI];
+    let y_limits = [0_f32.to_radians(), 120_f32.to_radians()];
+    let z_limits = [190_f32.to_radians(), 350_f32.to_radians()];
     let mut shoulder = SphericalJointBuilder::new()
-        .motor(JointAxis::AngX, 0., target_vel, stiffness, damping)
-        .motor(JointAxis::AngY, -10_f32.to_radians(), target_vel, stiffness, damping)
-        .motor(JointAxis::AngZ, 200_f32.to_radians(), target_vel, stiffness, damping)
+        .motor(JointAxis::AngX, x_limits[0], target_vel, stiffness, damping)
+        .motor(JointAxis::AngY, y_limits[0], target_vel, stiffness, damping)
+        .motor(JointAxis::AngZ, z_limits[0], target_vel, stiffness, damping)
         .motor_model(JointAxis::AngX, MotorModel::ForceBased)
         .motor_model(JointAxis::AngY, MotorModel::ForceBased)
         .motor_model(JointAxis::AngZ, MotorModel::ForceBased)
-        .limits(JointAxis::AngX, [0., 2.*PI])
-        .limits(JointAxis::AngY, [-10_f32.to_radians(), 120_f32.to_radians()])
-        .limits(JointAxis::AngZ, [200_f32.to_radians(), 340_f32.to_radians()])
+        .limits(JointAxis::AngX, x_limits)
+        .limits(JointAxis::AngY, y_limits)
+        .limits(JointAxis::AngZ, z_limits)
         .local_anchor1((torso_len/2.) * Vec3::Y)
         .local_anchor2((upper_arm_len/2.) * Vec3::Y)
         .build();
