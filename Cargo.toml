@@ -18,7 +18,8 @@ smallvec = "1.11.1"
 rapier3d = { git = "https://github.com/AnonymousAcid7787/rapier", branch = "fix-Setting-the-motor-position-of-a-Spherical-multibody-joint-is-broken"}
 
 [profile.dev.package."*"]
-opt-level = 3
+opt-level = 2
 
 [profile.release]
 codegen-units = 1
+lto = true

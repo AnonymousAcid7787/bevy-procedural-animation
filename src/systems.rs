@@ -3,7 +3,7 @@ use std::f32::consts::PI;
 use bevy::prelude::*;
 use bevy_flycam::FlyCam;
 use bevy_rapier3d::{prelude::*, rapier::prelude::{JointLimits, MotorModel}};
-use crate::{stickman::{SegmentInfo, StickmanCommandsExt}, TestComponent};
+use crate::stickman::{SegmentInfo, StickmanCommandsExt};
 
 
 macro_rules! drive_motor {
@@ -193,12 +193,12 @@ pub fn stickman_setup(
     let y_limits = [0_f32.to_radians(), 120_f32.to_radians()];
     let z_limits = [190_f32.to_radians(), 350_f32.to_radians()];
     let mut shoulder = SphericalJointBuilder::new()
-        .motor(JointAxis::AngX, x_limits[0], target_vel, stiffness, damping)
-        .motor(JointAxis::AngY, y_limits[0], target_vel, stiffness, damping)
-        .motor(JointAxis::AngZ, z_limits[0], target_vel, stiffness, damping)
-        .motor_model(JointAxis::AngX, MotorModel::ForceBased)
-        .motor_model(JointAxis::AngY, MotorModel::ForceBased)
-        .motor_model(JointAxis::AngZ, MotorModel::ForceBased)
+        .motor(JointAxis::AngX, x_limits[0], 30_f32.to_radians(), stiffness, damping)
+        .motor(JointAxis::AngY, y_limits[0], 30_f32.to_radians(), stiffness, damping)
+        .motor(JointAxis::AngZ, z_limits[0], 30_f32.to_radians(), stiffness, damping)
+        .motor_model(JointAxis::AngX, MotorModel::AccelerationBased)
+        .motor_model(JointAxis::AngY, MotorModel::AccelerationBased)
+        .motor_model(JointAxis::AngZ, MotorModel::AccelerationBased)
         .limits(JointAxis::AngX, x_limits)
         .limits(JointAxis::AngY, y_limits)
         .limits(JointAxis::AngZ, z_limits)
@@ -213,20 +213,16 @@ pub fn stickman_setup(
         .motor_model(MotorModel::ForceBased)
         .build();
         elbow.set_contacts_enabled(false);
-    
-    // commands.create_arm(
-    //     upper_arm,
-    //     lower_arm,
-    //     Some(torso),
-    //     elbow,
-    //     Some(shoulder),
-    //     true
-    // );
 
-    commands.get_entity(upper_arm)
-        .unwrap()
-        .set_parent(torso)
-        .insert(MultibodyJoint::new(torso, shoulder));
+    
+    commands.create_arm(
+        upper_arm,
+        lower_arm,
+        Some(torso),
+        elbow,
+        Some(shoulder),
+        true
+    );
     
 }
 
