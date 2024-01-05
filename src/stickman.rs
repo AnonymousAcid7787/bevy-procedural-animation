@@ -140,10 +140,13 @@ impl Command for CreateArm {
         //setting joint anchors automatically
         if self.auto_joint_anchors {
             let mut torso_info = None;
-            let upper_arm_info = Some(world.get::<SegmentInfo>(self.upper_arm).expect("auto joint anchors: upper_arm doesn't have SegmentInfo component!"));
-            let lower_arm_info = Some(world.get::<SegmentInfo>(self.lower_arm).expect("auto joint anchors: lower_arm doesn't have SegmentInfo component!"));
+            let upper_arm_info = Some(world.get::<SegmentInfo>(self.upper_arm)
+                .expect("auto joint anchors: upper_arm doesn't have SegmentInfo component!"));
+            let lower_arm_info = Some(world.get::<SegmentInfo>(self.lower_arm)
+                .expect("auto joint anchors: lower_arm doesn't have SegmentInfo component!"));
             if let Some(torso_ent) = self.torso_ent {
-                torso_info = Some(world.get::<SegmentInfo>(torso_ent).expect("auto joint anchors: torso doesn't have SegmentInfo component!"));
+                torso_info = Some(world.get::<SegmentInfo>(torso_ent)
+                    .expect("auto joint anchors: torso doesn't have SegmentInfo component!"));
             }
 
             let upper_arm_info = upper_arm_info.unwrap();

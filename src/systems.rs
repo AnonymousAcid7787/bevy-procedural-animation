@@ -1,7 +1,9 @@
+use std::f32::consts::PI;
+
 use bevy::prelude::*;
 use bevy_flycam::FlyCam;
 use bevy_rapier3d::{prelude::*, rapier::prelude::{JointLimits, MotorModel}};
-use crate::stickman::{SegmentInfo, StickmanCommandsExt};
+use crate::{stickman::{SegmentInfo, StickmanCommandsExt}, TestComponent};
 
 
 macro_rules! drive_motor {
@@ -24,6 +26,7 @@ macro_rules! drive_motor {
                 limits.min * (1. + damping),
                 limits.max
             );
+            
 
             if $dir != 0. {
                 $sleeping.sleeping = false;
@@ -51,7 +54,7 @@ pub fn test_update(
         if keys.pressed(KeyCode::Up) { f32::to_radians(5.) }
         else if keys.pressed(KeyCode::Down) { f32::to_radians(-5.) }
         else { f32::to_radians(0.) };
-
+    
     //shoulder control
     let x_control = keys.pressed(KeyCode::X);
     let y_control = keys.pressed(KeyCode::Y);
@@ -59,6 +62,7 @@ pub fn test_update(
     for(mut shoulder_joint, mut sleeping) in shoulder_joints.iter_mut() {
         let joint = &mut shoulder_joint.data;
         if joint.as_spherical().is_none() {continue;}
+
         if x_control {
             drive_motor!(joint, dir, JointAxis::AngX, sleeping);
         }
@@ -139,15 +143,15 @@ pub fn stickman_setup(
 
     //motor params
     let target_pos = f32::to_radians(0.);
-    let target_vel = f32::to_radians(30.);
+    let target_vel = f32::to_radians(10.);
     let stiffness = 1.;
+    
     let damping = 0.03;
-
     //torso
     let fixed_movement = commands.spawn(RigidBody::Fixed).id();
     let torso = commands.spawn((
         RigidBody::Dynamic,
-        ImpulseJoint::new(fixed_movement, FixedJoint::new())
+        MultibodyJoint::new(fixed_movement, FixedJoint::new())
     )).id();
     commands.add_segment_physics(
         torso,
@@ -189,6 +193,12 @@ pub fn stickman_setup(
         .motor(JointAxis::AngX, target_pos, target_vel, stiffness, damping)
         .motor(JointAxis::AngY, target_pos, target_vel, stiffness, damping)
         .motor(JointAxis::AngZ, target_pos, target_vel, stiffness, damping)
+        .motor_model(JointAxis::AngX, MotorModel::ForceBased)
+        .motor_model(JointAxis::AngY, MotorModel::ForceBased)
+        .motor_model(JointAxis::AngZ, MotorModel::ForceBased)
+        .limits(JointAxis::AngX, [0., 2.*PI])
+        .limits(JointAxis::AngY, [0., 2.*PI])
+        .limits(JointAxis::AngZ, [120_f32.to_radians(), 240_f32.to_radians()])
         .build();
         shoulder.set_contacts_enabled(false);
         let shoulder: GenericJoint = shoulder.into();
@@ -196,10 +206,9 @@ pub fn stickman_setup(
         .limits([10_f32.to_radians(), 150_f32.to_radians()])
         .motor(target_pos, target_vel, stiffness, damping)
         .motor_model(MotorModel::ForceBased)
-        .motor_max_force(10.)
         .build();
         elbow.set_contacts_enabled(false);
-
+    
     commands.create_arm(
         upper_arm,
         lower_arm,

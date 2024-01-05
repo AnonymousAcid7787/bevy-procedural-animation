@@ -44,7 +44,6 @@ fn main() {
         ))
         .add_systems(Startup, ( 
             stickman_setup,
-            // test_startup,
             scene_setup
         ))
         .add_systems(Update, (
@@ -76,7 +75,7 @@ pub fn scene_setup(
             ..Default::default()
         },
         FlyCam,
-        Collider::cuboid(0.1, 0.1, 0.1)
+        // Collider::cuboid(0.1, 0.1, 0.1)
     ));
 
     flycam_settings.speed = 2.;
@@ -96,6 +95,4 @@ pub fn scene_setup(
 
 
 #[derive(Component, Reflect)]
-pub struct TestComponent {
-    
-}
+pub struct TestComponent;
