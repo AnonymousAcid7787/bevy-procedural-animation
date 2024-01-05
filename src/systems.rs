@@ -190,15 +190,17 @@ pub fn stickman_setup(
 
     //joints
     let mut shoulder = SphericalJointBuilder::new()
-        .motor(JointAxis::AngX, target_pos, target_vel, stiffness, damping)
-        .motor(JointAxis::AngY, target_pos, target_vel, stiffness, damping)
-        .motor(JointAxis::AngZ, target_pos, target_vel, stiffness, damping)
+        .motor(JointAxis::AngX, 0., target_vel, stiffness, damping)
+        .motor(JointAxis::AngY, -10_f32.to_radians(), target_vel, stiffness, damping)
+        .motor(JointAxis::AngZ, 200_f32.to_radians(), target_vel, stiffness, damping)
         .motor_model(JointAxis::AngX, MotorModel::ForceBased)
         .motor_model(JointAxis::AngY, MotorModel::ForceBased)
         .motor_model(JointAxis::AngZ, MotorModel::ForceBased)
         .limits(JointAxis::AngX, [0., 2.*PI])
-        .limits(JointAxis::AngY, [0., 2.*PI])
-        .limits(JointAxis::AngZ, [120_f32.to_radians(), 240_f32.to_radians()])
+        .limits(JointAxis::AngY, [-10_f32.to_radians(), 120_f32.to_radians()])
+        .limits(JointAxis::AngZ, [200_f32.to_radians(), 340_f32.to_radians()])
+        .local_anchor1((torso_len/2.) * Vec3::Y)
+        .local_anchor2((upper_arm_len/2.) * Vec3::Y)
         .build();
         shoulder.set_contacts_enabled(false);
         let shoulder: GenericJoint = shoulder.into();
@@ -209,14 +211,19 @@ pub fn stickman_setup(
         .build();
         elbow.set_contacts_enabled(false);
     
-    commands.create_arm(
-        upper_arm,
-        lower_arm,
-        Some(torso),
-        elbow,
-        Some(shoulder),
-        true
-    );
+    // commands.create_arm(
+    //     upper_arm,
+    //     lower_arm,
+    //     Some(torso),
+    //     elbow,
+    //     Some(shoulder),
+    //     true
+    // );
+
+    commands.get_entity(upper_arm)
+        .unwrap()
+        .set_parent(torso)
+        .insert(MultibodyJoint::new(torso, shoulder));
     
 }
 
