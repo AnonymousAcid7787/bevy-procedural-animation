@@ -10,7 +10,7 @@ use bevy::{
 use bevy_flycam::{NoCameraPlayerPlugin, FlyCam, MovementSettings};
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_rapier3d::{prelude::*, render::RapierDebugRenderPlugin};
-use systems::{test_update, spawn_cubes, stickman_setup};
+use systems::{control_axes, spawn_cubes, stickman_setup, point_at_camera};
 
 mod utils;
 mod stickman;
@@ -47,7 +47,8 @@ fn main() {
             scene_setup
         ))
         .add_systems(Update, (
-            test_update,
+            control_axes,
+            point_at_camera,
             spawn_cubes
         ))
         .register_type::<TestComponent>();

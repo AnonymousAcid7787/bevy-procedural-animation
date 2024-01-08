@@ -2,7 +2,7 @@ use std::f32::consts::PI;
 
 use bevy::prelude::*;
 use bevy_flycam::FlyCam;
-use bevy_rapier3d::{prelude::*, rapier::prelude::{JointLimits, MotorModel}};
+use bevy_rapier3d::{prelude::*, rapier::prelude::{JointLimits, MotorModel}, parry::math::{SpacialVector, Rotation}, na::{AbstractRotation, Vector3}};
 use crate::stickman::{SegmentInfo, StickmanCommandsExt};
 
 
@@ -44,7 +44,7 @@ macro_rules! drive_motor {
 }
 
 
-pub fn test_update(
+pub fn control_axes(
     mut shoulder_joints: Query<(&mut MultibodyJoint, &mut Sleeping), With<UpperArm>>,
     mut elbow_joints: Query<(&mut MultibodyJoint, &mut Sleeping), (With<LowerArm>, Without<UpperArm>)>,
     keys: Res<Input<KeyCode>>,
@@ -127,6 +127,42 @@ pub fn spawn_cubes(
     }
 }
 
+pub fn point_at_camera(
+    rapier_context: Res<RapierContext>,
+    mut shoulder_joints: Query<(&RapierMultibodyJointHandle, &mut MultibodyJoint, &mut Sleeping, &SegmentInfo), With<UpperArm>>,
+    mut cam_transform: Query<&mut Transform, With<FlyCam>>,
+    mut test_obj: Query<&mut Transform, (With<TestObject>, Without<FlyCam>)>,
+) {
+    let cam_pos = &mut cam_transform.get_single_mut().unwrap().translation;
+    let test_obj_pos = &mut test_obj.get_single_mut().unwrap().translation;
+    for (mb_handle, mut mb_joint, mut sleeping, seg_info) in shoulder_joints.iter_mut() {
+        if mb_joint.data.as_spherical().is_none() { continue; };
+        let ball_joint = mb_joint.data.as_spherical_mut().unwrap();
+
+        sleeping.sleeping = false;
+        let link = rapier_context.multibody_joints
+            .get(mb_handle.0)
+            .unwrap()
+            .0
+            .link(2)
+            .unwrap();
+        let joint = link.joint;
+        let mb_joint: MultibodyJointAccess = unsafe {std::mem::transmute(joint)};
+
+        let wrist_pos = Vector3::new(0., -1., 0.).scale(seg_info.length/2.);
+        let joint_dir = mb_joint.joint_rot * wrist_pos;
+        let angle_to_cam = Vec3::new(joint_dir.x, joint_dir.y, joint_dir.z).angle_between(*cam_pos);
+
+        let joint_pos = link.local_to_world().translation;
+        test_obj_pos.x = joint_dir.x + joint_pos.x;
+        test_obj_pos.y = joint_dir.y + joint_pos.y;
+        test_obj_pos.z = joint_dir.z + joint_pos.z;
+
+        // ball_joint.set_motor_position(JointAxis::AngX, 0., 1., 0.);
+        // ball_joint.set_motor_position(JointAxis::AngY, 0., 1., 0.);
+        // ball_joint.set_motor_position(JointAxis::AngZ, 0., 1., 0.);
+    }
+}
 
 pub fn stickman_setup(
     mut commands: Commands
@@ -189,9 +225,12 @@ pub fn stickman_setup(
 
 
     //joints
+    // let x_limits = [0., 2.*PI];
+    // let y_limits = [0_f32.to_radians(), 120_f32.to_radians()];
+    // let z_limits = [190_f32.to_radians(), 350_f32.to_radians()];
     let x_limits = [0., 2.*PI];
-    let y_limits = [0_f32.to_radians(), 120_f32.to_radians()];
-    let z_limits = [190_f32.to_radians(), 350_f32.to_radians()];
+    let y_limits = [0., 2.*PI];
+    let z_limits = [0., 2.*PI];
     let mut shoulder = SphericalJointBuilder::new()
         .motor(JointAxis::AngX, x_limits[0], 30_f32.to_radians(), stiffness, damping)
         .motor(JointAxis::AngY, y_limits[0], 30_f32.to_radians(), stiffness, damping)
@@ -215,18 +254,43 @@ pub fn stickman_setup(
         elbow.set_contacts_enabled(false);
 
     
-    commands.create_arm(
-        upper_arm,
-        lower_arm,
-        Some(torso),
-        elbow,
-        Some(shoulder),
-        true
-    );
+    // commands.create_arm(
+    //     upper_arm,
+    //     lower_arm,
+    //     Some(torso),
+    //     elbow,
+    //     Some(shoulder),
+    //     true
+    // );
+
+    commands.get_entity(upper_arm).unwrap()
+        .insert(MultibodyJoint::new(torso, shoulder));
     
+    commands.spawn((
+        Collider::cuboid(0.1, 0.1, 0.1),
+        RigidBody::Fixed,
+        TransformBundle::default(),
+        TestObject,
+        ImpulseJoint::new(
+            upper_arm,
+            {
+                let mut j = GenericJoint::default();
+                j.set_contacts_enabled(false);
+                j
+            }
+        )
+    ));
 }
 
 #[derive(Component)]
 pub struct UpperArm;
 #[derive(Component)]
 pub struct LowerArm;
+#[derive(Component)]
+pub struct TestObject;
+
+pub struct MultibodyJointAccess {
+    pub data: bevy_rapier3d::rapier::dynamics::GenericJoint,
+    pub coords: SpacialVector<bevy_rapier3d::parry::math::Real>,
+    pub joint_rot: Rotation<bevy_rapier3d::parry::math::Real>,
+}
