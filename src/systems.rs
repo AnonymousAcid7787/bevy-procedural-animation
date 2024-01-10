@@ -2,7 +2,7 @@ use std::f32::consts::PI;
 
 use bevy::prelude::*;
 use bevy_flycam::FlyCam;
-use bevy_rapier3d::{prelude::*, rapier::prelude::{JointLimits, MotorModel}, parry::math::{SpacialVector, Rotation}, na::{AbstractRotation, Vector3}};
+use bevy_rapier3d::{prelude::*, rapier::prelude::{JointLimits, MotorModel}, parry::math::{SpacialVector, Rotation}, na::{AbstractRotation, Vector3, UnitQuaternion, Translation, Quaternion}};
 use crate::stickman::{SegmentInfo, StickmanCommandsExt};
 
 
@@ -134,6 +134,7 @@ pub fn point_at_camera(
     mut test_obj: Query<&mut Transform, (With<TestObject>, Without<FlyCam>)>,
 ) {
     let cam_pos = &mut cam_transform.get_single_mut().unwrap().translation;
+    let cam_pos = Vector3::new(cam_pos.x, cam_pos.y, cam_pos.z);
     let test_obj_pos = &mut test_obj.get_single_mut().unwrap().translation;
     for (mb_handle, mut mb_joint, mut sleeping, seg_info) in shoulder_joints.iter_mut() {
         if mb_joint.data.as_spherical().is_none() { continue; };
@@ -146,21 +147,25 @@ pub fn point_at_camera(
             .0
             .link(2)
             .unwrap();
-        let joint = link.joint;
-        let mb_joint: MultibodyJointAccess = unsafe {std::mem::transmute(joint)};
+        let joint = &link.joint;
+        let mb_joint: &MultibodyJointAccess = unsafe {std::mem::transmute(joint)};
 
         let wrist_pos = Vector3::new(0., -1., 0.).scale(seg_info.length/2.);
         let joint_dir = mb_joint.joint_rot * wrist_pos;
-        let angle_to_cam = Vec3::new(joint_dir.x, joint_dir.y, joint_dir.z).angle_between(*cam_pos);
-
         let joint_pos = link.local_to_world().translation;
         test_obj_pos.x = joint_dir.x + joint_pos.x;
         test_obj_pos.y = joint_dir.y + joint_pos.y;
         test_obj_pos.z = joint_dir.z + joint_pos.z;
 
-        // ball_joint.set_motor_position(JointAxis::AngX, 0., 1., 0.);
-        // ball_joint.set_motor_position(JointAxis::AngY, 0., 1., 0.);
-        // ball_joint.set_motor_position(JointAxis::AngZ, 0., 1., 0.);
+        let mut target_rot: Quaternion<f32> = Quaternion::identity();
+        let quat_xyz = joint_dir.cross(&cam_pos);
+        // target_rot.
+        let quat_w = f32::sqrt((joint_dir.magnitude().powf(2.)) * (cam_pos.magnitude().powf(2.))) + joint_dir.dot(&cam_pos);
+        
+
+        // ball_joint.set_motor_position(JointAxis::AngX, x, 1., 0.03);
+        // ball_joint.set_motor_position(JointAxis::AngY, y, 1., 0.03);
+        // ball_joint.set_motor_position(JointAxis::AngZ, z, 1., 0.03);
     }
 }
 
