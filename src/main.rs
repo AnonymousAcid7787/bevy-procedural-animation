@@ -48,7 +48,7 @@ fn main() {
         ))
         .add_systems(Update, (
             control_axes,
-            point_at_camera,
+            // point_at_camera,
             spawn_cubes
         ))
         .register_type::<TestComponent>();

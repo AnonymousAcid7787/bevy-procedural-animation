@@ -149,23 +149,23 @@ pub fn point_at_camera(
             .unwrap();
         let joint = &link.joint;
         let mb_joint: &MultibodyJointAccess = unsafe {std::mem::transmute(joint)};
+        let joint_pos = link.local_to_world().translation;
+
+        
+        let target_joint_dir = (cam_pos - joint_pos.vector).normalize();
+        let target_rot = UnitQuaternion::face_towards(&target_joint_dir, &Vector3::y());
+        let (z, x, y) = target_rot.to_rotation_matrix().euler_angles();
 
         let wrist_pos = Vector3::new(0., -1., 0.).scale(seg_info.length/2.);
-        let joint_dir = mb_joint.joint_rot * wrist_pos;
-        let joint_pos = link.local_to_world().translation;
+        let joint_dir = target_rot * wrist_pos;
         test_obj_pos.x = joint_dir.x + joint_pos.x;
         test_obj_pos.y = joint_dir.y + joint_pos.y;
         test_obj_pos.z = joint_dir.z + joint_pos.z;
 
-        let mut target_rot: Quaternion<f32> = Quaternion::identity();
-        let quat_xyz = joint_dir.cross(&cam_pos);
-        // target_rot.
-        let quat_w = f32::sqrt((joint_dir.magnitude().powf(2.)) * (cam_pos.magnitude().powf(2.))) + joint_dir.dot(&cam_pos);
-        
 
-        // ball_joint.set_motor_position(JointAxis::AngX, x, 1., 0.03);
-        // ball_joint.set_motor_position(JointAxis::AngY, y, 1., 0.03);
-        // ball_joint.set_motor_position(JointAxis::AngZ, z, 1., 0.03);
+        ball_joint.set_motor_position(JointAxis::AngX, x, 1., 0.03);
+        ball_joint.set_motor_position(JointAxis::AngY, y, 1., 0.03);
+        ball_joint.set_motor_position(JointAxis::AngZ, z, 1., 0.03);
     }
 }
 
@@ -259,32 +259,32 @@ pub fn stickman_setup(
         elbow.set_contacts_enabled(false);
 
     
-    // commands.create_arm(
-    //     upper_arm,
-    //     lower_arm,
-    //     Some(torso),
-    //     elbow,
-    //     Some(shoulder),
-    //     true
-    // );
+    commands.create_arm(
+        upper_arm,
+        lower_arm,
+        Some(torso),
+        elbow,
+        Some(shoulder),
+        true
+    );
 
-    commands.get_entity(upper_arm).unwrap()
-        .insert(MultibodyJoint::new(torso, shoulder));
+    // commands.get_entity(upper_arm).unwrap()
+    //     .insert(MultibodyJoint::new(torso, shoulder));
     
-    commands.spawn((
-        Collider::cuboid(0.1, 0.1, 0.1),
-        RigidBody::Fixed,
-        TransformBundle::default(),
-        TestObject,
-        ImpulseJoint::new(
-            upper_arm,
-            {
-                let mut j = GenericJoint::default();
-                j.set_contacts_enabled(false);
-                j
-            }
-        )
-    ));
+    // commands.spawn((
+    //     Collider::cuboid(0.1, 0.1, 0.1),
+    //     RigidBody::Fixed,
+    //     TransformBundle::default(),
+    //     TestObject,
+    //     ImpulseJoint::new(
+    //         upper_arm,
+    //         {
+    //             let mut j = GenericJoint::default();
+    //             j.set_contacts_enabled(false);
+    //             j
+    //         }
+    //     )
+    // ));
 }
 
 #[derive(Component)]
