@@ -2,7 +2,7 @@ use std::f32::consts::PI;
 
 use bevy::prelude::*;
 use bevy_flycam::FlyCam;
-use bevy_rapier3d::{prelude::*, rapier::prelude::{JointLimits, MotorModel}, parry::math::{SpacialVector, Rotation}, na::{AbstractRotation, Vector3, UnitQuaternion, Translation, Quaternion}};
+use bevy_rapier3d::{prelude::*, rapier::prelude::{JointLimits, MotorModel}, parry::math::{SpacialVector, Rotation}, na::{AbstractRotation, Vector3, UnitQuaternion, Translation, Quaternion, UnitVector3}};
 use crate::stickman::{SegmentInfo, StickmanCommandsExt};
 
 
@@ -150,18 +150,20 @@ pub fn point_at_camera(
         let joint = &link.joint;
         let mb_joint: &MultibodyJointAccess = unsafe {std::mem::transmute(joint)};
         let joint_pos = link.local_to_world().translation;
+        let joint_rot = &mb_joint.joint_rot;
 
-        
-        let target_joint_dir = (cam_pos - joint_pos.vector).normalize();
-        let target_rot = UnitQuaternion::face_towards(&target_joint_dir, &Vector3::y());
-        let (z, x, y) = target_rot.to_rotation_matrix().euler_angles();
+        let wrist_offset = Vector3::new(0., -1., 0.).scale(seg_info.length/2.);
+        let joint_dir = (joint_rot * wrist_offset).normalize();
+        // test_obj_pos.x = joint_pos.x + joint_dir.x;
+        // test_obj_pos.y = joint_pos.y + joint_dir.y;
+        // test_obj_pos.z = joint_pos.z + joint_dir.z;
 
-        let wrist_pos = Vector3::new(0., -1., 0.).scale(seg_info.length/2.);
-        let joint_dir = target_rot * wrist_pos;
-        test_obj_pos.x = joint_dir.x + joint_pos.x;
-        test_obj_pos.y = joint_dir.y + joint_pos.y;
-        test_obj_pos.z = joint_dir.z + joint_pos.z;
-
+        let dir_to_cam = cam_pos - joint_pos.vector;
+        let angle = joint_dir.angle(&dir_to_cam);
+        let axis = UnitVector3::new_normalize(joint_dir.cross(&dir_to_cam));
+        let final_rot = joint_rot * UnitQuaternion::from_axis_angle(&axis, angle);
+        let (x, y, z) = final_rot.euler_angles();
+        println!("{0}, {1}, {2}", x, y, z);
 
         ball_joint.set_motor_position(JointAxis::AngX, x, 1., 0.03);
         ball_joint.set_motor_position(JointAxis::AngY, y, 1., 0.03);
@@ -243,9 +245,9 @@ pub fn stickman_setup(
         .motor_model(JointAxis::AngX, MotorModel::AccelerationBased)
         .motor_model(JointAxis::AngY, MotorModel::AccelerationBased)
         .motor_model(JointAxis::AngZ, MotorModel::AccelerationBased)
-        .limits(JointAxis::AngX, x_limits)
-        .limits(JointAxis::AngY, y_limits)
-        .limits(JointAxis::AngZ, z_limits)
+        // .limits(JointAxis::AngX, x_limits)
+        // .limits(JointAxis::AngY, y_limits)
+        // .limits(JointAxis::AngZ, z_limits)
         .local_anchor1((torso_len/2.) * Vec3::Y)
         .local_anchor2((upper_arm_len/2.) * Vec3::Y)
         .build();
@@ -259,32 +261,32 @@ pub fn stickman_setup(
         elbow.set_contacts_enabled(false);
 
     
-    commands.create_arm(
-        upper_arm,
-        lower_arm,
-        Some(torso),
-        elbow,
-        Some(shoulder),
-        true
-    );
+    // commands.create_arm(
+    //     upper_arm,
+    //     lower_arm,
+    //     Some(torso),
+    //     elbow,
+    //     Some(shoulder),
+    //     true
+    // );
 
-    // commands.get_entity(upper_arm).unwrap()
-    //     .insert(MultibodyJoint::new(torso, shoulder));
+    commands.get_entity(upper_arm).unwrap()
+        .insert(MultibodyJoint::new(torso, shoulder));
     
-    // commands.spawn((
-    //     Collider::cuboid(0.1, 0.1, 0.1),
-    //     RigidBody::Fixed,
-    //     TransformBundle::default(),
-    //     TestObject,
-    //     ImpulseJoint::new(
-    //         upper_arm,
-    //         {
-    //             let mut j = GenericJoint::default();
-    //             j.set_contacts_enabled(false);
-    //             j
-    //         }
-    //     )
-    // ));
+    commands.spawn((
+        Collider::cuboid(0.1, 0.1, 0.1),
+        RigidBody::Fixed,
+        TransformBundle::default(),
+        TestObject,
+        ImpulseJoint::new(
+            upper_arm,
+            {
+                let mut j = GenericJoint::default();
+                j.set_contacts_enabled(false);
+                j
+            }
+        )
+    ));
 }
 
 #[derive(Component)]
