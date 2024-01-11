@@ -159,11 +159,11 @@ pub fn point_at_camera(
         // test_obj_pos.z = joint_pos.z + joint_dir.z;
 
         let dir_to_cam = cam_pos - joint_pos.vector;
-        let angle = joint_dir.angle(&dir_to_cam);
-        let axis = UnitVector3::new_normalize(joint_dir.cross(&dir_to_cam));
-        let final_rot = joint_rot * UnitQuaternion::from_axis_angle(&axis, angle);
-        let (x, y, z) = final_rot.euler_angles();
-        println!("{0}, {1}, {2}", x, y, z);
+        let final_rot = UnitQuaternion::from_axis_angle(
+            &UnitVector3::new_normalize(wrist_offset.cross(&dir_to_cam)),
+            wrist_offset.angle(&dir_to_cam)
+        );
+        let (z, x, y) = final_rot.to_rotation_matrix().euler_angles();
 
         ball_joint.set_motor_position(JointAxis::AngX, x, 1., 0.03);
         ball_joint.set_motor_position(JointAxis::AngY, y, 1., 0.03);
