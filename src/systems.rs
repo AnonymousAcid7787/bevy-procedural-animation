@@ -2,8 +2,8 @@ use std::f32::consts::PI;
 
 use bevy::prelude::*;
 use bevy_flycam::FlyCam;
-use bevy_rapier3d::{prelude::*, rapier::prelude::{JointLimits, MotorModel}, parry::math::{SpacialVector, Rotation}, na::{AbstractRotation, Vector3, UnitQuaternion, Translation, Quaternion, UnitVector3}};
-use crate::stickman::{SegmentInfo, StickmanCommandsExt};
+use bevy_rapier3d::{prelude::*, rapier::{math::ANG_DIM, prelude::{JointLimits, MotorModel}}, parry::math::{Rotation, SpacialVector, DIM}, na::{AbstractRotation, Vector3, UnitQuaternion, Translation, Quaternion, UnitVector3, Vector2}};
+use crate::{stickman::{SegmentInfo, StickmanCommandsExt}, utils::immutable_ref_to_mutable};
 
 
 macro_rules! drive_motor {
@@ -109,6 +109,20 @@ pub fn control_axes(
     }
 }
 
+pub fn control_test_cube(
+    mut test_cube_q: Query<&mut Transform, With<TestObject2>>,
+    keys: Res<Input<KeyCode>>, 
+    time: Res<bevy::time::Time>
+) {
+    let mut transform = test_cube_q.get_single_mut().unwrap();
+    let movement_vector = Vec3::new(
+        (keys.pressed(KeyCode::Right) as i8 - keys.pressed(KeyCode::Left) as i8) as f32,
+        (keys.pressed(KeyCode::Up) as i8 - keys.pressed(KeyCode::Down) as i8) as f32,
+        (keys.pressed(KeyCode::I) as i8 - keys.pressed(KeyCode::K) as i8) as f32,
+    ).normalize() * time.delta_seconds();
+    transform.translation += movement_vector;
+}
+
 pub fn spawn_cubes(
     keys: Res<Input<KeyCode>>,
     cam_transform: Query<&Transform, With<FlyCam>>,
@@ -120,7 +134,7 @@ pub fn spawn_cubes(
             commands.spawn((
                 Collider::cuboid(0.1, 0.1, 0.1),
                 RigidBody::Dynamic,
-                GlobalTransform::from(transform.clone()),
+                transform.clone(),
                 ColliderMassProperties::Mass(1.)
             ));
         }
@@ -128,7 +142,7 @@ pub fn spawn_cubes(
 }
 
 pub fn point_at_camera(
-    rapier_context: Res<RapierContext>,
+    mut rapier_context: ResMut<RapierContext>,
     mut shoulder_joints: Query<(&RapierMultibodyJointHandle, &mut MultibodyJoint, &mut Sleeping, &SegmentInfo), With<UpperArm>>,
     mut cam_transform: Query<&mut Transform, With<FlyCam>>,
     mut test_obj: Query<&mut Transform, (With<TestObject>, Without<FlyCam>)>,
@@ -142,37 +156,44 @@ pub fn point_at_camera(
 
         sleeping.sleeping = false;
         let link = rapier_context.multibody_joints
-            .get(mb_handle.0)
+            .get_mut(mb_handle.0)
             .unwrap()
             .0
-            .link(2)
+            .link_mut(2)
             .unwrap();
-        let joint = &link.joint;
-        let mb_joint: &MultibodyJointAccess = unsafe {std::mem::transmute(joint)};
+        let joint = &mut link.joint;
+        let mb_joint: &mut MultibodyJointAccess = unsafe {std::mem::transmute(joint)};
         let joint_pos = link.local_to_world().translation;
         let joint_rot = &mb_joint.joint_rot;
 
-        let wrist_offset = Vector3::new(0., -1., 0.).scale(seg_info.length/2.);
-        let joint_dir = (joint_rot * wrist_offset).normalize();
-        // test_obj_pos.x = joint_pos.x + joint_dir.x;
-        // test_obj_pos.y = joint_pos.y + joint_dir.y;
-        // test_obj_pos.z = joint_pos.z + joint_dir.z;
+        let origin_vector = Vector3::new(0., -1., 0.);;
+        let dir_to_cam = (cam_pos - joint_pos.vector).normalize();
+        let joint_dir = joint_rot * origin_vector;
+        test_obj_pos.x = joint_pos.x + joint_dir.x;
+        test_obj_pos.y = joint_pos.y + joint_dir.y;
+        test_obj_pos.z = joint_pos.z + joint_dir.z;
 
-        let dir_to_cam = cam_pos - joint_pos.vector;
-        let final_rot = UnitQuaternion::from_axis_angle(
-            &UnitVector3::new_normalize(wrist_offset.cross(&dir_to_cam)),
-            wrist_offset.angle(&dir_to_cam)
+        //apparently this is the right quaternion. 
+        //Its just that when the arm tries to point to the cam, it has horrible accuracy
+        let quat = UnitQuaternion::from_axis_angle(
+            &UnitVector3::new_normalize(origin_vector.cross(&dir_to_cam)),
+            origin_vector.angle(&dir_to_cam)
         );
-        let (z, x, y) = final_rot.to_rotation_matrix().euler_angles();
 
-        ball_joint.set_motor_position(JointAxis::AngX, x, 1., 0.03);
-        ball_joint.set_motor_position(JointAxis::AngY, y, 1., 0.03);
-        ball_joint.set_motor_position(JointAxis::AngZ, z, 1., 0.03);
+        let (x, y, z) = quat.to_rotation_matrix().euler_angles();
+
+        ball_joint.set_motor_position(JointAxis::AngX, x, 1., 0.);
+        ball_joint.set_motor_position(JointAxis::AngY, y, 1., 0.);
+        ball_joint.set_motor_position(JointAxis::AngZ, z, 1., 0.);
+
+        println!("{0} == {1} ?", mb_joint.coords[3], x);
     }
 }
 
 pub fn stickman_setup(
-    mut commands: Commands
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>
 ) {
     let scale = 1.;
 
@@ -180,9 +201,40 @@ pub fn stickman_setup(
     let torso_depth = 0.6_f32 * scale;
     let torso_len = torso_depth + radius*2.;
     let arm_depth = torso_depth;
-    let upper_arm_len = (arm_depth*0.7) + radius*2.;
-    let lower_arm_len = (arm_depth*0.49) + radius*2.;
+    let upper_arm_depth = arm_depth*0.7;
+    let lower_arm_depth = arm_depth*0.49;
+    let upper_arm_len = upper_arm_depth + radius*2.;
+    let lower_arm_len = lower_arm_depth + radius*2.;
     let thickness = radius;
+
+    let torso_mesh;
+    let upper_arm_mesh;
+    let lower_arm_mesh;
+
+    //meshes & shapes
+    {
+        let shape = shape::Capsule {
+            depth: torso_depth,
+            radius: thickness,
+            ..Default::default()
+        };
+        torso_mesh = meshes.add(shape.into());
+        
+        let shape = shape::Capsule {
+            depth: upper_arm_depth,
+            radius: thickness,
+            ..Default::default()
+        };
+        upper_arm_mesh = meshes.add(shape.into());
+        
+        let shape = shape::Capsule {
+            depth: lower_arm_depth,
+            radius: thickness,
+            ..Default::default()
+        };
+        lower_arm_mesh = meshes.add(shape.into());
+
+    }
 
     //motor params
     let target_pos = f32::to_radians(0.);
@@ -191,10 +243,16 @@ pub fn stickman_setup(
     
     let damping = 0.03;
     //torso
+    let material_handle = materials.add(Color::RED.into());
     let fixed_movement = commands.spawn(RigidBody::Fixed).id();
     let torso = commands.spawn((
         RigidBody::Dynamic,
-        MultibodyJoint::new(fixed_movement, FixedJoint::new())
+        MultibodyJoint::new(fixed_movement, FixedJoint::new()),
+        PbrBundle {
+            mesh: torso_mesh,
+            material: material_handle.clone(),
+            ..Default::default()
+        },
     )).id();
     commands.add_segment_physics(
         torso,
@@ -208,6 +266,11 @@ pub fn stickman_setup(
     let upper_arm = commands.spawn((
         RigidBody::Dynamic,
         UpperArm,
+        PbrBundle {
+            mesh: upper_arm_mesh,
+            material: material_handle.clone(),
+            ..Default::default()
+        },
     )).id();
     commands.add_segment_physics(
         upper_arm,
@@ -221,6 +284,11 @@ pub fn stickman_setup(
     let lower_arm = commands.spawn((
         RigidBody::Dynamic,
         LowerArm,
+        PbrBundle {
+            mesh: lower_arm_mesh,
+            material: material_handle.clone(),
+            ..Default::default()
+        },
     )).id();
     commands.add_segment_physics(
         lower_arm,
@@ -272,7 +340,7 @@ pub fn stickman_setup(
 
     commands.get_entity(upper_arm).unwrap()
         .insert(MultibodyJoint::new(torso, shoulder));
-    
+
     commands.spawn((
         Collider::cuboid(0.1, 0.1, 0.1),
         RigidBody::Fixed,
@@ -287,6 +355,13 @@ pub fn stickman_setup(
             }
         )
     ));
+
+    commands.spawn((
+        TransformBundle::default(),
+        TestObject2,
+        Name::new("Hamburger")
+    ));
+    
 }
 
 #[derive(Component)]
@@ -295,6 +370,8 @@ pub struct UpperArm;
 pub struct LowerArm;
 #[derive(Component)]
 pub struct TestObject;
+#[derive(Component)]
+pub struct TestObject2;
 
 pub struct MultibodyJointAccess {
     pub data: bevy_rapier3d::rapier::dynamics::GenericJoint,
