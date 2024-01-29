@@ -3,14 +3,14 @@ use bevy::{
     DefaultPlugins, 
     render::{
         RenderPlugin, 
-        settings::{WgpuSettings, PowerPreference, RenderCreation, Backends}
+        settings::{WgpuSettings, PowerPreference, RenderCreation}
     }, 
     pbr::wireframe::WireframePlugin
 };
 use bevy_flycam::{NoCameraPlayerPlugin, FlyCam, MovementSettings};
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_rapier3d::{prelude::*, render::RapierDebugRenderPlugin};
-use systems::{control_axes, spawn_cubes, stickman_setup, point_at_camera};
+use systems::{spawn_cubes, stickman_setup, point_at_camera};
 
 mod utils;
 mod stickman;

@@ -2,8 +2,9 @@ use std::f32::consts::PI;
 
 use bevy::prelude::*;
 use bevy_flycam::FlyCam;
-use bevy_rapier3d::{prelude::*, rapier::{math::ANG_DIM, prelude::{JointLimits, MotorModel}}, parry::math::{Rotation, SpacialVector, DIM}, na::{AbstractRotation, Vector3, UnitQuaternion, Translation, Quaternion, UnitVector3, Vector2}};
-use crate::{stickman::{SegmentInfo, StickmanCommandsExt}, utils::immutable_ref_to_mutable};
+use bevy_rapier3d::{prelude::*, rapier::prelude::{JointLimits, MotorModel}, parry::math::{Rotation, SpacialVector}, na::{Vector3, UnitQuaternion, UnitVector3}};
+
+use crate::stickman::{SegmentInfo, StickmanCommandsExt};
 
 
 macro_rules! drive_motor {
@@ -129,14 +130,13 @@ pub fn spawn_cubes(
 
 pub fn point_at_camera(
     mut rapier_context: ResMut<RapierContext>,
-    mut shoulder_joints: Query<(&RapierMultibodyJointHandle, &mut MultibodyJoint, &mut Sleeping, &SegmentInfo), With<UpperArm>>,
+    mut shoulder_joints: Query<(&RapierMultibodyJointHandle, &mut MultibodyJoint, &mut Sleeping), With<UpperArm>>,
     mut cam_transform: Query<&mut Transform, With<FlyCam>>,
-    mut test_obj: Query<&mut Transform, (With<TestObject>, Without<FlyCam>)>,
 ) {
     let cam_pos = &mut cam_transform.get_single_mut().unwrap().translation;
     let cam_pos = Vector3::new(cam_pos.x, cam_pos.y, cam_pos.z);
-    let test_obj_pos = &mut test_obj.get_single_mut().unwrap().translation;
-    for (mb_handle, mut mb_joint, mut sleeping, seg_info) in shoulder_joints.iter_mut() {
+
+    for (mb_handle, mut mb_joint, mut sleeping) in shoulder_joints.iter_mut() {
         if mb_joint.data.as_spherical().is_none() { continue; };
         let ball_joint = mb_joint.data.as_spherical_mut().unwrap();
 
@@ -150,11 +150,9 @@ pub fn point_at_camera(
         let joint = &mut link.joint;
         let mb_joint: &mut MultibodyJointAccess = unsafe {std::mem::transmute(joint)};
         let joint_pos = link.local_to_world().translation;
-        let joint_rot = &mb_joint.joint_rot;
 
-        let origin_vector = Vector3::new(0., -1., 0.);;
+        let origin_vector = Vector3::new(0., -1., 0.);
         let dir_to_cam = (cam_pos - joint_pos.vector).normalize();
-        let joint_dir = joint_rot * origin_vector;
 
         //apparently this is the right quaternion. 
         //Its just that when the arm tries to point to the cam, it has horrible accuracy
