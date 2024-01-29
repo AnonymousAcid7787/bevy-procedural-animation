@@ -10,12 +10,12 @@ bevy = "0.12.1"
 bevy-inspector-egui = "0.21.0"
 bevy_flycam = "0.12.0"
 #might add wasm stuff + simd-nightly for more cross compatibility
-bevy_rapier3d = {version = "0.23.0", features = ["parallel", "simd-stable", "debug-render-3d", "serde-serialize"]}
+bevy_rapier3d = {version = "0.24.0", features = ["parallel", "simd-stable", "debug-render-3d", "serde-serialize"]}
 rayon = "1.8.0"
 smallvec = "1.11.1"
 
 [patch.crates-io]
-rapier3d = { git = "https://github.com/AnonymousAcid7787/rapier", branch = "fix-Setting-the-motor-position-of-a-Spherical-multibody-joint-is-broken"}
+rapier3d = { git = "https://github.com/AnonymousAcid7787/rapier", branch = "fix-joint-inaccuracy"}
 
 
 [profile.dev.package."*"]

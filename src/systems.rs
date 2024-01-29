@@ -109,20 +109,6 @@ pub fn control_axes(
     }
 }
 
-pub fn control_test_cube(
-    mut test_cube_q: Query<&mut Transform, With<TestObject2>>,
-    keys: Res<Input<KeyCode>>, 
-    time: Res<bevy::time::Time>
-) {
-    let mut transform = test_cube_q.get_single_mut().unwrap();
-    let movement_vector = Vec3::new(
-        (keys.pressed(KeyCode::Right) as i8 - keys.pressed(KeyCode::Left) as i8) as f32,
-        (keys.pressed(KeyCode::Up) as i8 - keys.pressed(KeyCode::Down) as i8) as f32,
-        (keys.pressed(KeyCode::I) as i8 - keys.pressed(KeyCode::K) as i8) as f32,
-    ).normalize() * time.delta_seconds();
-    transform.translation += movement_vector;
-}
-
 pub fn spawn_cubes(
     keys: Res<Input<KeyCode>>,
     cam_transform: Query<&Transform, With<FlyCam>>,
@@ -169,9 +155,6 @@ pub fn point_at_camera(
         let origin_vector = Vector3::new(0., -1., 0.);;
         let dir_to_cam = (cam_pos - joint_pos.vector).normalize();
         let joint_dir = joint_rot * origin_vector;
-        test_obj_pos.x = joint_pos.x + joint_dir.x;
-        test_obj_pos.y = joint_pos.y + joint_dir.y;
-        test_obj_pos.z = joint_pos.z + joint_dir.z;
 
         //apparently this is the right quaternion. 
         //Its just that when the arm tries to point to the cam, it has horrible accuracy
@@ -182,11 +165,11 @@ pub fn point_at_camera(
 
         let (x, y, z) = quat.to_rotation_matrix().euler_angles();
 
-        ball_joint.set_motor_position(JointAxis::AngX, x, 1., 0.);
-        ball_joint.set_motor_position(JointAxis::AngY, y, 1., 0.);
-        ball_joint.set_motor_position(JointAxis::AngZ, z, 1., 0.);
+        ball_joint.set_motor_position(JointAxis::AngX, x, 1., 0.03);
+        ball_joint.set_motor_position(JointAxis::AngY, y, 1., 0.03);
+        ball_joint.set_motor_position(JointAxis::AngZ, z, 1., 0.03);
 
-        println!("{0} == {1} ?", mb_joint.coords[3], x);
+        println!("{}", mb_joint.coords[3]);
     }
 }
 
