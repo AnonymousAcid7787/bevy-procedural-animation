@@ -4,7 +4,6 @@ use bevy::{
     log::LogPlugin, 
     diagnostic::{LogDiagnosticsPlugin, FrameTimeDiagnosticsPlugin}, math::Vec3
 };
-use bevy_rapier3d::na::Vector3;
 
 /// A plugin that logs fps 
 #[derive(Default)]

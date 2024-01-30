@@ -145,7 +145,7 @@ pub fn point_at_camera(
             .get_mut(mb_handle.0)
             .unwrap()
             .0
-            .link_mut(2)
+            .link_mut(0)
             .unwrap();
         let joint = &mut link.joint;
         let mb_joint: &mut MultibodyJointAccess = unsafe {std::mem::transmute(joint)};
@@ -166,8 +166,6 @@ pub fn point_at_camera(
         ball_joint.set_motor_position(JointAxis::AngX, x, 1., 0.03);
         ball_joint.set_motor_position(JointAxis::AngY, y, 1., 0.03);
         ball_joint.set_motor_position(JointAxis::AngZ, z, 1., 0.03);
-
-        println!("{}", mb_joint.coords[3]);
     }
 }
 
@@ -319,29 +317,16 @@ pub fn stickman_setup(
     //     true
     // );
 
+    let mut free_joint = GenericJoint::new(JointAxesMask::empty());
+        free_joint.set_contacts_enabled(false);
     commands.get_entity(upper_arm).unwrap()
-        .insert(MultibodyJoint::new(torso, shoulder));
-
-    commands.spawn((
-        Collider::cuboid(0.1, 0.1, 0.1),
-        RigidBody::Fixed,
-        TransformBundle::default(),
-        TestObject,
-        ImpulseJoint::new(
-            upper_arm,
-            {
-                let mut j = GenericJoint::default();
-                j.set_contacts_enabled(false);
-                j
-            }
-        )
-    ));
-
-    commands.spawn((
-        TransformBundle::default(),
-        TestObject2,
-        Name::new("Hamburger")
-    ));
+        .set_parent(torso)
+        .insert((
+            MultibodyJoint::new(torso, shoulder),
+            ImpulseJoint::new(fixed_movement, free_joint)
+        ));
+    
+        //prolly gonna just redo all of this :(
     
 }
 

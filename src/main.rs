@@ -1,3 +1,5 @@
+use std::f32::consts::PI;
+
 use bevy::{
     prelude::{*}, 
     DefaultPlugins, 
@@ -10,7 +12,7 @@ use bevy::{
 use bevy_flycam::{NoCameraPlayerPlugin, FlyCam, MovementSettings};
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_rapier3d::{prelude::*, render::RapierDebugRenderPlugin};
-use systems::{spawn_cubes, stickman_setup, point_at_camera};
+use systems::{control_axes, point_at_camera, spawn_cubes, stickman_setup, UpperArm};
 
 mod utils;
 mod stickman;
@@ -42,13 +44,13 @@ fn main() {
             RapierPhysicsPlugin::<()>::default(),
         ))
         .add_systems(Startup, ( 
-            stickman_setup,
+            // stickman_setup,
             scene_setup
         ))
         .add_systems(Update, (
             // control_axes,
             point_at_camera,
-            spawn_cubes
+            // spawn_cubes
         ))
         .register_type::<TestComponent>();
     
@@ -90,6 +92,31 @@ pub fn scene_setup(
         },
         Collider::cuboid(50., 0.5, 50.)
     ));
+
+
+    let seg1 = commands.spawn(
+        RigidBody::Fixed,
+    ).id();
+
+    let mut seg2 = commands.spawn((
+        RigidBody::Dynamic,
+        Collider::capsule_y(0.4, 0.1),
+        UpperArm,
+        Sleeping::default()
+    ));
+
+    let mut joint = SphericalJointBuilder::new()
+        .local_anchor1(Vec3::new(1., 0., 0.))
+        .local_anchor2(Vec3::new(0., -1., 0.))
+        .motor(JointAxis::AngX, 0., 30_f32.to_radians(), 1., 0.03)
+        .motor(JointAxis::AngY, 0., 30_f32.to_radians(), 1., 0.03)
+        .motor(JointAxis::AngZ, 0., 30_f32.to_radians(), 1., 0.03)
+        .build();
+        joint.set_contacts_enabled(false);
+    
+    seg2
+        .set_parent(seg1)
+        .insert(MultibodyJoint::new(seg1, joint));
 
 }
 
